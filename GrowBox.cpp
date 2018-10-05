@@ -6,9 +6,9 @@ const char * fetName[] = { "Fan1", "Fan2", "Light", "Pump" };
 const char   fetPin[]  = { 2, 0, 15, 13 };
 
 GrowBox::GrowBox() {
-  fet      = 0;
-  humidity = 0;
-  temp     = 0.0;
+  config.fetState    = 0;
+  config.humidity    = 0;
+  config.temperature = 0.0;
 
   // Initiate and switch all FETs off
   for ( char fetNo = 0; fetNo < sizeof( fetPin ) - 1; fetNo++ ) {
@@ -25,17 +25,17 @@ void GrowBox::fetSet( char fetNo, char value ) {
 }
 
 void GrowBox::fetOn( char fetNo ) {
-  BIT_SET( fet, fetNo );
+  BIT_SET( config.fetState, fetNo );
   digitalWrite( fetPin[fetNo], HIGH );
 }
 
 void GrowBox::fetOff( char fetNo ) {
-  BIT_CLEAR( fet, fetNo );
+  BIT_CLEAR( config.fetState, fetNo );
   digitalWrite( fetPin[fetNo], LOW );
 }
 
 char GrowBox::fetStatus( char fetNo ) {
-  return BIT_CHECK( fet, fetNo );
+  return BIT_CHECK( config.fetState, fetNo );
 }
 
 uint8_t GrowBox::dht12get( uint8_t address ) {
@@ -57,8 +57,8 @@ uint8_t GrowBox::dht12get( uint8_t address ) {
   if ( data[4]!=( data[0] + data[1] + data[2] + data[3] ) )
     return 3; // Checksum error
     
-  humidity = ( data[0] + (float) data[1] / 10 );
-  temp     = ( data[2] + (float) data[3] / 10 );
+  config.humidity    = ( data[0] + (float) data[1] / 10 );
+  config.temperature = ( data[2] + (float) data[3] / 10 );
   
   return 0;
 }

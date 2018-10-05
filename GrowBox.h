@@ -12,19 +12,19 @@
 #define AUX  3
 
 typedef struct {
-  uint8_t minHumid; // Fan off
-  uint8_t maxHumid; // Fan on
-  float   minTemp;  // Fan off
-  float   maxTemp;  // Fan on
-  long    interval; // Update freq
-  char *  name;
+  uint8_t fetState;     // Last state of FETs
+  float   humidity;     // Air humidity
+  float   temperature;  // Air temperature
+  uint8_t minHumid;
+  uint8_t maxHumid;
+  float   minTemp;
+  float   maxTemp;
+  long    interval;    // Update freq
 } Config;
 
 class GrowBox {
 public:
   Config config;
-  char    fet;      // FET on/off fan1, fan2, led, aux
-  float   humidity; // Air Humidity
   float   temp;     // Air Temperature 
   
   GrowBox();

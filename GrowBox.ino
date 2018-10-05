@@ -24,7 +24,7 @@ SSD1306AsciiWire oled;
 #endif
 
 unsigned long previousMillis = 0;
-const long interval = 5000;
+const long interval = 1000;
 
 void setup(void){
 #ifdef COM
@@ -85,12 +85,12 @@ void loop(void){
     oled.setCursor( 0, 1 );
     oled.print( "Temp: " );
     oled.setCursor( 40, 1 );
-    oled.print( growBox.temp );
+    oled.print( growBox.config.temperature );
     oled.clearToEOL();
     oled.setCursor( 0, 2 );
     oled.print( "Humid: " );
     oled.setCursor( 40, 2 );
-    oled.print( growBox.humidity );
+    oled.print( growBox.config.humidity );
     oled.clearToEOL();
     } else {
       oled.print( "DHT12 error " );
