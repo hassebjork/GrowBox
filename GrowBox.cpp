@@ -6,9 +6,12 @@ const char * fetName[] = { "Fan1", "Fan2", "Light", "Pump" };
 const char   fetPin[]  = { 2, 0, 15, 13 };
 
 GrowBox::GrowBox() {
-  config.fetState    = 0;
-  config.humidity    = 0;
-  config.temperature = 0.0;
+  config.fetState       = 0;
+  config.humidity       = 0;
+  config.temperature.x  = 20.0;
+  config.temperature.r  = 0.2;
+  config.temperature.pn = 0.1;
+  config.temperature.p  = 1.0;
 
   // Initiate and switch all FETs off
   for ( char fetNo = 0; fetNo < sizeof( fetPin ) - 1; fetNo++ ) {
@@ -57,8 +60,9 @@ uint8_t GrowBox::dht12get( uint8_t address ) {
   if ( data[4]!=( data[0] + data[1] + data[2] + data[3] ) )
     return 3; // Checksum error
     
-  config.humidity    = ( data[0] + (float) data[1] / 10 );
-  config.temperature = ( data[2] + (float) data[3] / 10 );
+  config.humidity = ( data[0] + (float) data[1] / 10 );
+  temp = data[2] + (float) data[3] / 10;
+  float t = config.temperature.predict( temp );
   
   return 0;
 }
