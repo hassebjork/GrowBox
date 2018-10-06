@@ -31,11 +31,8 @@ void GrowBox::init() {
   pinMode( IO14, INPUT );
   
   config.fetState       = 0;
-  config.humidity       = 0;
-  config.temperature.x  = 20.0; // Predicted value
-  config.temperature.r  = 0.2;  // Sensor noise
-  config.temperature.pn = 0.2;  // Process noise
-  config.temperature.p  = 1.0;  // Predicted error
+  config.humidity       = 50.0;
+  config.temperature    = 20.0; // Predicted value
   config.previousMillis = 0;
   
   // Initiate and switch all FETs off
@@ -73,41 +70,26 @@ void GrowBox::update() {
       oled.setCursor( 0, 1 );
       oled.print( "Temp: " );
       oled.setCursor( 40, 1 );
-      oled.print( temp, 1 );
+      oled.print( config.temperature, 1 );
       oled.clearToEOL();
       oled.setCursor( 0, 2 );
       oled.print( "Humid: " );
       oled.setCursor( 40, 2 );
-      oled.print( config.humidity );
+      oled.print( config.humidity, 1 );
       oled.clearToEOL();
-      oled.setCursor( 0, 3 );
-      oled.print( "x:" );
-      oled.print( config.temperature.x, 5 );
-      oled.setCursor( 64, 3 );
-      oled.print( "r:" );
-      oled.print( config.temperature.r, 5 );
-      oled.setCursor( 0, 4 );
-      oled.print( "n:" );
-      oled.print( config.temperature.pn, 5 );
-      oled.setCursor( 64, 4 );
-      oled.print( "p:" );
-      oled.print( config.temperature.p, 5 );
     } else {
       oled.setCursor( 0, 1 );
       oled.print( "DHT12 error: " );
-      oled.println( temp );
+      oled.println( t );
       oled.clearToEOL();
     }
 #endif
   
 #ifdef COM
-    snprintf ( buff, 60, "\"%s\",%.1f,%.3f,%.3f,%.3f,%f",
+    snprintf ( buff, 60, "\"%s\",%.1f,%.1f",
       curTime,
-      temp,
-      config.temperature.x,
-      config.temperature.r,
-      config.temperature.pn,
-      config.temperature.p
+      config.temperature,
+      config.humidity
     );
     Serial.println( buff );
 #endif
@@ -155,9 +137,10 @@ uint8_t GrowBox::dht12get() {
   if ( data[4]!=( data[0] + data[1] + data[2] + data[3] ) )
     return 3; // Checksum error
     
-  config.humidity = ( data[0] + (float) data[1] / 10 );
-  temp = data[2] + (float) data[3] / 10;
-  float t = config.temperature.predict( temp );
+  float temperature  = data[2] + (float) data[3] / 10;
+  float humidity     = data[0] + (float) data[1] / 10;
+  config.humidity    = 0.2 * humidity    + 0.8 * config.humidity;
+  config.temperature = 0.2 * temperature + 0.8 * config.temperature;
   
   return 0;
 }

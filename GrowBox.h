@@ -2,7 +2,6 @@
 #define _GrowBox_h
 
 #include <Arduino.h>
-#include "Kalman.h"
 
 #define BIT_SET(a,b) ((a) |= (1<<(b)))
 #define BIT_CLEAR(a,b) ((a) &= ~(1<<(b)))
@@ -38,7 +37,7 @@
 typedef struct {
   uint8_t fetState;     // Last state of FETs
   float   humidity;     // Air humidity
-  Kalman  temperature;  // Air temperature
+  float   temperature;  // Air temperature
   uint8_t minHumid;
   uint8_t maxHumid;
   float   minTemp;
@@ -49,7 +48,6 @@ typedef struct {
 class GrowBox {
 public:
   Config config;
-  float  temp;
   SSD1306AsciiWire oled;
   
   GrowBox();
