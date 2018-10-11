@@ -35,20 +35,28 @@
 #endif
 
 typedef struct {
+  uint8_t id;           // id of controller
+  uint8_t minHumid;     // Humidity Low
+  uint8_t maxHumid;     // Humidity High
+  float   minTemp;      // Temperature Low
+  float   maxTemp;      // Temperature High
+} Config;
+
+typedef struct {
   uint8_t fetState;     // Last state of FETs
   float   humidity;     // Air humidity
   float   temperature;  // Air temperature
-  uint8_t minHumid;
-  uint8_t maxHumid;
-  float   minTemp;
-  float   maxTemp;
   unsigned long previousMillis;
-} Config;
+} Data;
 
 class GrowBox {
 public:
-  Config config;
+  Config   config;
+  Data     data;
   SSD1306AsciiWire oled;
+  float    logTemp;
+  float    logHumid;
+  uint16_t logCount;
   
   GrowBox();
   void init();
