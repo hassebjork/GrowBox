@@ -2,6 +2,7 @@
 #define _GrowBox_h
 
 #include <Arduino.h>
+#include "FS.h"
 
 #define BIT_SET(a,b) ((a) |= (1<<(b)))
 #define BIT_CLEAR(a,b) ((a) &= ~(1<<(b)))

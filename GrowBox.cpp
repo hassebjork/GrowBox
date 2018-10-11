@@ -1,3 +1,15 @@
+/*
+ * Light_Sleep WiFi
+ * https://github.com/esp8266/Arduino/issues/1381#issuecomment-239519680
+ * https://github.com/esp8266/Arduino/issues/1381#issuecomment-279117473
+ * https://github.com/esp8266/Arduino/issues/1381#issuecomment-170139062
+ * https://github.com/esp8266/Arduino/issues/1381#issuecomment-258621247
+ * 
+ * Light_Sleep GPIO_Wake
+ * https://github.com/esp8266/Arduino/issues/1381#issuecomment-195303597
+ * 
+ */
+
 #include "GrowBox.h"
 
 const char * fetName[] = { "Fan1", "Fan2", "Light", "Pump" };
@@ -98,6 +110,27 @@ void GrowBox::update() {
       oled.println( t );
       oled.clearToEOL();
     }
+
+    if ( sec == 0 && min == 0 ) {
+      File f = SPIFFS.open( "/log.txt", "a" );
+      if ( !f ) {
+        oled.setCursor( 0, 6 );
+        oled.print( "Failed to open log.txt" );
+      } else {
+        if ( logCount > 0 ) {
+          snprintf ( buff, 60, "\"%s\",%.1f,%.1f",
+            curTime, logTemp / logCount, data.humidity );
+          f.println( buff );
+          oled.setCursor( 0, 4 );
+          oled.print( buff );
+          oled.clearToEOL();
+        }
+        f.close();
+        logCount = 0;
+        logTemp  = 0.0;
+        logHumid = 0.0;
+      }
+    }
 #endif
   
 #ifdef COM
@@ -109,6 +142,17 @@ void GrowBox::update() {
     Serial.println( buff );
 #endif
 
+    SPIFFS.begin();
+    File f = SPIFFS.open( "/name.txt", "r" );
+    oled.setCursor( 0, 5 );
+    if ( !f ) {
+        oled.print( "Failed to open name.txt" );
+    } else {
+      String s = f.readStringUntil( '\n' );
+      oled.println( s );
+      f.close();
+    }
+    
   }
 }
 
