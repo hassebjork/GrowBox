@@ -35,10 +35,19 @@ void GrowBox::init() {
   oled.set400kHz();  
   oled.setFont( Adafruit5x7 );
   oled.clear();
+#ifdef COM
+  Serial.println("Init OLED");
+#endif
 #else
   pinMode( SDA, OUTPUT );
   pinMode( SCL, OUTPUT );
+#ifdef COM
+  Serial.println("Skipping WIRE");
 #endif
+#endif
+  
+  config.read( "/config.json" );
+  delay( 100 );
   
   pinMode( IO12, INPUT );
   pinMode( IO14, INPUT );
@@ -49,14 +58,8 @@ void GrowBox::init() {
   
   data.fetState       = 0;
   data.humidity       = 50.0;
-  data.temperature    = 20.0; // Predicted value
+  data.temperature    = 20.0;
   data.previousMillis = 0;
-
-  config.id       = 1; 
-  config.minHumid = 50;
-  config.maxHumid = 90;
-  config.minTemp  = 18.0;
-  config.maxTemp  = 24.0;
 
   // Initiate and switch all FETs off
   for ( char fetNo = 0; fetNo < sizeof( fetPin ) - 1; fetNo++ ) {
@@ -80,6 +83,7 @@ void GrowBox::update() {
   
   if ( currentMillis - data.previousMillis >= INTERVAL ) {
     data.previousMillis += INTERVAL;
+  
 #ifdef I2C
     uint8_t t = dht12get();
 
@@ -106,8 +110,10 @@ void GrowBox::update() {
       logCount++;
     } else {
       oled.setCursor( 0, 1 );
-      oled.print( "DHT12 error: " );
-      oled.println( t );
+      oled.print( String( "DHT12 error: " ) + t );
+#ifdef COM
+      Serial.println( String( "DHT12 error: " ) + t );
+#endif
       oled.clearToEOL();
     }
 
@@ -116,11 +122,14 @@ void GrowBox::update() {
       if ( !f ) {
         oled.setCursor( 0, 6 );
         oled.print( "Failed to open log.txt" );
+#ifdef COM
+        Serial.println( "Failed to open log.txt" );
+#endif
       } else {
         if ( logCount > 0 ) {
           snprintf ( buff, 60, "\"%s\",%.1f,%.1f",
             curTime, logTemp / logCount, data.humidity );
-          f.println( buff );
+//          f.println( buff );
           oled.setCursor( 0, 4 );
           oled.print( buff );
           oled.clearToEOL();
@@ -140,19 +149,17 @@ void GrowBox::update() {
       data.humidity
     );
     Serial.println( buff );
+    snprintf ( buff, 60, "Name:\"%s\" id:%d minT:%.1f maxT:%.1f minH:%d maxH:%d",
+      config.name,
+      config.id,
+      config.minTemp,
+      config.maxTemp,
+      config.minHumid,
+      config.maxHumid
+    );
+    Serial.println( buff );
 #endif
 
-    SPIFFS.begin();
-    File f = SPIFFS.open( "/name.txt", "r" );
-    oled.setCursor( 0, 5 );
-    if ( !f ) {
-        oled.print( "Failed to open name.txt" );
-    } else {
-      String s = f.readStringUntil( '\n' );
-      oled.println( s );
-      f.close();
-    }
-    
   }
 }
 

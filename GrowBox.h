@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include "FS.h"
 
+#include "Config.h"
+
 #define BIT_SET(a,b) ((a) |= (1<<(b)))
 #define BIT_CLEAR(a,b) ((a) &= ~(1<<(b)))
 #define BIT_FLIP(a,b) ((a) ^= (1<<(b)))
@@ -34,14 +36,6 @@
 #include "SSD1306Ascii.h"
 #include "SSD1306AsciiWire.h"
 #endif
-
-typedef struct {
-  uint8_t id;           // id of controller
-  uint8_t minHumid;     // Humidity Low
-  uint8_t maxHumid;     // Humidity High
-  float   minTemp;      // Temperature Low
-  float   maxTemp;      // Temperature High
-} Config;
 
 typedef struct {
   uint8_t fetState;     // Last state of FETs
