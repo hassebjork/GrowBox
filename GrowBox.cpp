@@ -63,6 +63,10 @@ void GrowBox::init() {
   oled.println( "\nConnected!" ); 
   oled.println( WiFi.localIP() );
   
+  /* Time */  
+  setSyncInterval( 24*60*60 );  // Daily
+  setSyncProvider( getNtpTime );
+  
   pinMode( IO12, INPUT );
   pinMode( IO14, INPUT );
 
@@ -86,27 +90,26 @@ void GrowBox::init() {
 
 void GrowBox::update() {
   unsigned long currentMillis = millis();
-  char    curTime[13];
+  char    curTime[20];
   char    buff[60];
-  uint8_t sec = ( currentMillis / 1000    ) % 60;
-  uint8_t min = ( currentMillis / 60000   ) % 60;
-  uint8_t hr  = ( currentMillis / 3600000 ) % 24;
-  uint8_t day = ( currentMillis / 3600000 ) / 24;
   
-  snprintf ( curTime, 60, "%02d %02d:%02d:%02d",
-    day, hr, min, sec );
+  time_t time = now() 
+    + config.tz * SECS_PER_HOUR
+    + ( dst( now(), config.tz ) ? 1 : 0 ) * SECS_PER_HOUR;
+  
+  snprintf ( curTime, sizeof(curTime), "%02d-%02d-%02d %02d:%02d:%02d",
+    year( time ), month( time ), day( time ),
+    hour( time ), minute( time ), second( time ) );
+  
+  oled.home();
+  oled.print( curTime );
+  oled.clearToEOL();
   
   if ( currentMillis - data.previousMillis >= INTERVAL ) {
     data.previousMillis += INTERVAL;
   
 #ifdef I2C
     uint8_t t = dht12get();
-
-    oled.home();
-    oled.print("Time:");
-    oled.setCursor( 40, 0 );
-    oled.print( curTime );
-    oled.clearToEOL();
     
     if ( t == 0 ) {
       oled.setCursor( 0, 1 );
@@ -132,7 +135,7 @@ void GrowBox::update() {
       oled.clearToEOL();
     }
 
-    if ( sec == 0 && min == 0 ) {
+    if ( second( time ) == 0 && minute( time ) == 0 ) {
       File f = SPIFFS.open( "/log.txt", "a" );
       if ( !f ) {
         oled.setCursor( 0, 6 );
@@ -156,26 +159,9 @@ void GrowBox::update() {
       logHumid = 0.0;
     }
 #endif
-  
-#ifdef COM
-    snprintf ( buff, 60, "\"%s\",%.1f,%.1f",
-      curTime,
-      data.temperature,
-      data.humidity
-    );
-    _s.println( buff );
-    snprintf ( buff, 60, "Name:%s id:%d minT:%.1f maxT:%.1f minH:%d maxH:%d",
-      config.name,
-      config.id,
-      config.minTemp,
-      config.maxTemp,
-      config.minHumid,
-      config.maxHumid
-    );
-#endif
 
   }
-  delay( 1000 );
+  delay( 900 );
 }
 
 void GrowBox::fetSet( char fetNo, char value ) {
@@ -223,3 +209,64 @@ uint8_t GrowBox::dht12get() {
   
   return 0;
 }
+
+time_t getNtpTime() {
+  IPAddress   timeServer;
+  const char* ntpServerName = NTPSERVER;
+  byte        packetBuffer[NTP_PACKET_SIZE];
+  WiFiUDP     Udp;
+  
+  Udp.begin( TIMEPORT );
+  while ( Udp.parsePacket() > 0 );    // discard any previously received packets
+  WiFi.hostByName( ntpServerName, timeServer ); 
+  
+  // send an NTP request to the time server at the given address
+  // set all bytes in the buffer to 0
+  memset( packetBuffer, 0, NTP_PACKET_SIZE );
+  // Initialize values needed to form NTP request
+  // (see URL above for details on the packets)
+  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+  packetBuffer[1] = 0;     // Stratum, or type of clock
+  packetBuffer[2] = 6;     // Polling Interval
+  packetBuffer[3] = 0xEC;  // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  packetBuffer[12]  = 49;
+  packetBuffer[13]  = 0x4E;
+  packetBuffer[14]  = 49;
+  packetBuffer[15]  = 52;
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:                 
+  Udp.beginPacket( timeServer, 123 ); //NTP requests are to port 123
+  Udp.write( packetBuffer, NTP_PACKET_SIZE );
+  Udp.endPacket();
+  
+  uint32_t beginWait = millis();
+  while ( millis() - beginWait < 1500 ) {
+    int size = Udp.parsePacket();
+    if ( size >= NTP_PACKET_SIZE ) {
+      Udp.read( packetBuffer, NTP_PACKET_SIZE );  // read packet into the buffer
+      unsigned long secsSince1900;
+      // convert four bytes starting at location 40 to a long integer
+      secsSince1900 =  (unsigned long)packetBuffer[40] << 24;
+      secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
+      secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
+      secsSince1900 |= (unsigned long)packetBuffer[43];
+      return secsSince1900 - 2208988800UL;
+    }
+  }
+  return 0; // return 0 if unable to get the time
+}
+
+bool dst( time_t t, uint8_t tz ) {
+  t += tz * SECS_PER_HOUR;
+  if ( month(t)  < 3 || month(t) > 10 )       // Jan, Feb, Nov, Dec 
+    return false;
+  if ( month(t)  > 3 && month(t) < 10 )       // Apr, Jun; Jul, Aug, Sep 
+    return true;
+  if ( month(t) ==  3 && ( hour(t) + 24 * day(t) ) >= ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 4 ) % 7 ) ) 
+    || month(t) == 10 && ( hour(t) + 24 * day(t) ) <  ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 1 ) % 7 ) ) )
+    return true;
+  else
+    return false;
+}
+

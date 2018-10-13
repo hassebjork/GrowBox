@@ -8,6 +8,7 @@
 #include <Arduino.h>
 #include "FS.h"           // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
 #include "Config.h"       // Configuration class for local storage
+#include "Clock.h"        // TimeLib with NTP update
 
 #define BIT_SET(a,b) ((a) |= (1<<(b)))
 #define BIT_CLEAR(a,b) ((a) &= ~(1<<(b)))
@@ -46,6 +47,14 @@ extern "C" {
   #include "user_interface.h"
 }
 
+/* TIME */
+#define NTPSERVER       "time.nist.gov"
+#define TIMEPORT        8888
+#define NTP_PACKET_SIZE 48
+#include <TimeLib.h>      // https://github.com/PaulStoffregen/Time
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+
 typedef struct {
   uint8_t fetState;     // Last state of FETs
   float   humidity;     // Air humidity
@@ -61,6 +70,7 @@ public:
   float    logTemp;
   float    logHumid;
   uint16_t logCount;
+  time_t   time;
   
   GrowBox();
   void init();
@@ -69,8 +79,10 @@ public:
   void fetOn( char fetNo );
   void fetOff( char fetNo );
   char fetStatus( char fetNo );
-  
   uint8_t dht12get();
 };
+
+time_t  getNtpTime();
+bool dst( time_t t, uint8_t tz );
 
 #endif

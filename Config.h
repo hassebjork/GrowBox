@@ -36,6 +36,8 @@ public:
   uint8_t    maxHumid;    // Humidity High
   float      minTemp;     // Temperature Low
   float      maxTemp;     // Temperature High
+  int8_t     tz;          // TimeZone
+  int8_t     dst;         // Daylight Saving Time
   
   Config() {
   }
@@ -56,8 +58,10 @@ public:
       id       = root["id"] | 0;
       minHumid = root["humidity"]["min"] | 30;
       maxHumid = root["humidity"]["max"] | 95;
-      minTemp  = root["temperature"]["min"]  | 14.0;
-      maxTemp  = root["temperature"]["max"]  | 28.0;
+      minTemp  = root["temperature"]["min"] | 14.0;
+      maxTemp  = root["temperature"]["max"] | 28.0;
+      tz       = root["time"]["tz"]  | 1;
+      dst      = root["time"]["dst"] | 1;
       strlcpy( ssid, root["network"][0]["ssid"] | "", sizeof( ssid ) );
       strlcpy( pass, root["network"][0]["password"] | "", sizeof( pass ) );
     }
