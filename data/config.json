@@ -1,1 +1,1 @@
-{"id":1,"name":"GrowBox1","humidity":{"min":50,"max":90},"temperature":{"min":18.0,"max":24.0},"network":[{"ssid":"BJORK","password":""},{"ssid":"BJORK1","password":""}]}
+{"id":1,"name":"GrowBox1","humidity":{"min":50,"max":90},"temperature":{"min":18.0,"max":24.0},"network":[{"ssid":"BJORK","password":"hasse.bjork_home.se"},{"ssid":"BJORK1","password":"hasse.bjork_home.se"}]}

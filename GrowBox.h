@@ -1,20 +1,19 @@
 #ifndef _GrowBox_h
 #define _GrowBox_h
 
-#include <Arduino.h>
-#include "FS.h"
+#define COM
+#define I2C
+#define INTERVAL 5000
 
-#include "Config.h"
+#include <Arduino.h>
+#include "FS.h"           // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
+#include "Config.h"       // Configuration class for local storage
 
 #define BIT_SET(a,b) ((a) |= (1<<(b)))
 #define BIT_CLEAR(a,b) ((a) &= ~(1<<(b)))
 #define BIT_FLIP(a,b) ((a) ^= (1<<(b)))
 #define BIT_CHECK(a,b) ((a) & (1<<(b)))
 
-#define COM
-#define I2C
-
-#define INTERVAL 1000
 /* CONTROL */
 #define SDA  4
 #define SCL  5
@@ -33,9 +32,19 @@
 #define I2C_OLED  0x3C
 #define I2C_DHT12 0x5C
 #include <Wire.h>
-#include "SSD1306Ascii.h"
-#include "SSD1306AsciiWire.h"
+#include "SSD1306Ascii.h"       // https://github.com/greiman/SSD1306Ascii
+#include "SSD1306AsciiWire.h"   // https://github.com/greiman/SSD1306Ascii
+#ifdef COM
+#define _s Serial
+#else
+#define _s oled
 #endif
+#endif
+
+#include <ESP8266WiFi.h>
+extern "C" {
+  #include "user_interface.h"
+}
 
 typedef struct {
   uint8_t fetState;     // Last state of FETs

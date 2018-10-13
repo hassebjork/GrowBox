@@ -28,13 +28,14 @@
 
 class Config {
 public:
-  uint8_t  id;          // id of controller
-  char     name[10];    // Controller name
-  uint8_t  minHumid;    // Humidity Low
-  uint8_t  maxHumid;    // Humidity High
-  float    minTemp;     // Temperature Low
-  float    maxTemp;     // Temperature High
-  
+  uint8_t    id;          // id of controller
+  char       name[10];    // Controller name
+  char       ssid[32];    // Network SSID
+  char       pass[64];    // Network password
+  uint8_t    minHumid;    // Humidity Low
+  uint8_t    maxHumid;    // Humidity High
+  float      minTemp;     // Temperature Low
+  float      maxTemp;     // Temperature High
   
   Config() {
   }
@@ -57,6 +58,8 @@ public:
       maxHumid = root["humidity"]["max"] | 95;
       minTemp  = root["temperature"]["min"]  | 14.0;
       maxTemp  = root["temperature"]["max"]  | 28.0;
+      strlcpy( ssid, root["network"][0]["ssid"] | "", sizeof( ssid ) );
+      strlcpy( pass, root["network"][0]["password"] | "", sizeof( pass ) );
     }
     f.close();
   }

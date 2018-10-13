@@ -9,7 +9,7 @@
  * https://github.com/esp8266/Arduino/issues/1381#issuecomment-195303597
  * 
  */
-
+#include <ESP8266WiFi.h>
 #include "GrowBox.h"
 
 const char * fetName[] = { "Fan1", "Fan2", "Light", "Pump" };
@@ -22,8 +22,8 @@ GrowBox::GrowBox() {
 void GrowBox::init() {
 #ifdef COM
   Serial.begin( 115200 );
-  Serial.println();
-  Serial.println("Booting Sketch...");
+  _s.println();
+  _s.println("Booting Sketch...");
 #else
   pinMode( TX,  OUTPUT );
   pinMode( RX,  OUTPUT );
@@ -34,20 +34,34 @@ void GrowBox::init() {
   oled.begin( &Adafruit128x64, I2C_OLED );
   oled.set400kHz();  
   oled.setFont( Adafruit5x7 );
+  oled.setScroll( true );
   oled.clear();
+  oled.println( "GrowBox" );
 #ifdef COM
-  Serial.println("Init OLED");
+  _s.println("Init OLED");
 #endif
 #else
   pinMode( SDA, OUTPUT );
   pinMode( SCL, OUTPUT );
 #ifdef COM
-  Serial.println("Skipping WIRE");
+  _s.println("Skipping WIRE");
 #endif
 #endif
   
   config.read( "/config.json" );
   delay( 100 );
+  
+  WiFi.mode( WIFI_STA );
+  WiFi.begin( config.ssid, config.pass );
+
+  uint8_t i = 0;
+  oled.print( "WiFi" ); 
+  while ( WiFi.status() != WL_CONNECTED && i++ < 100 ) {
+     delay( 500 );
+     oled.print( "." );
+  }
+  oled.println( "\nConnected!" ); 
+  oled.println( WiFi.localIP() );
   
   pinMode( IO12, INPUT );
   pinMode( IO14, INPUT );
@@ -66,7 +80,8 @@ void GrowBox::init() {
     pinMode( fetPin[fetNo], OUTPUT );
     digitalWrite( fetPin[fetNo], LOW );
   }
-  
+  delay( 1000 );
+  oled.clear();
 }
 
 void GrowBox::update() {
@@ -112,7 +127,7 @@ void GrowBox::update() {
       oled.setCursor( 0, 1 );
       oled.print( String( "DHT12 error: " ) + t );
 #ifdef COM
-      Serial.println( String( "DHT12 error: " ) + t );
+      _s.println( String( "DHT12 error: " ) + t );
 #endif
       oled.clearToEOL();
     }
@@ -123,7 +138,7 @@ void GrowBox::update() {
         oled.setCursor( 0, 6 );
         oled.print( "Failed to open log.txt" );
 #ifdef COM
-        Serial.println( "Failed to open log.txt" );
+        _s.println( "Failed to open log.txt" );
 #endif
       } else {
         if ( logCount > 0 ) {
@@ -135,10 +150,10 @@ void GrowBox::update() {
           oled.clearToEOL();
         }
         f.close();
-        logCount = 0;
-        logTemp  = 0.0;
-        logHumid = 0.0;
       }
+      logCount = 0;
+      logTemp  = 0.0;
+      logHumid = 0.0;
     }
 #endif
   
@@ -148,8 +163,8 @@ void GrowBox::update() {
       data.temperature,
       data.humidity
     );
-    Serial.println( buff );
-    snprintf ( buff, 60, "Name:\"%s\" id:%d minT:%.1f maxT:%.1f minH:%d maxH:%d",
+    _s.println( buff );
+    snprintf ( buff, 60, "Name:%s id:%d minT:%.1f maxT:%.1f minH:%d maxH:%d",
       config.name,
       config.id,
       config.minTemp,
@@ -157,10 +172,10 @@ void GrowBox::update() {
       config.minHumid,
       config.maxHumid
     );
-    Serial.println( buff );
 #endif
 
   }
+  delay( 1000 );
 }
 
 void GrowBox::fetSet( char fetNo, char value ) {
