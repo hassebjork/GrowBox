@@ -23,7 +23,7 @@ void GrowBox::init() {
 #ifdef COM
   Serial.begin( 115200 );
   _s.println();
-  _s.println("Booting Sketch...");
+  _s.println( F("Booting Sketch...") );
 #else
   pinMode( TX,  OUTPUT );
   pinMode( RX,  OUTPUT );
@@ -36,7 +36,7 @@ void GrowBox::init() {
   oled.setFont( Adafruit5x7 );
   oled.setScroll( true );
   oled.clear();
-  oled.println( "GrowBox" );
+  oled.println( F("GrowBox") );
 #ifdef COM
   _s.println("Init OLED");
 #endif
@@ -44,7 +44,7 @@ void GrowBox::init() {
   pinMode( SDA, OUTPUT );
   pinMode( SCL, OUTPUT );
 #ifdef COM
-  _s.println("Skipping WIRE");
+  _s.println( F("Skipping WIRE") );
 #endif
 #endif
   
@@ -55,14 +55,18 @@ void GrowBox::init() {
   WiFi.begin( config.ssid, config.pass );
 
   uint8_t i = 0;
-  oled.print( "WiFi" ); 
   while ( WiFi.status() != WL_CONNECTED && i++ < 100 ) {
-     delay( 500 );
-     oled.print( "." );
+    delay( 500 );
+    oled.print( "." );
+    if ( i % 20 == 0 )
+      oled.println( "" );
   }
-  oled.println( "\nConnected!" ); 
-  oled.println( WiFi.localIP() );
-  
+  if ( WiFi.status() == WL_CONNECTED ) {
+    oled.println( F("\nConnected!") ); 
+    oled.println( WiFi.localIP() );
+  } else {
+    oled.println( F("Error connecting!") ); 
+  }
   /* Time */  
   setSyncInterval( 24*60*60 );  // Daily
   setSyncProvider( getNtpTime );
@@ -113,35 +117,45 @@ void GrowBox::update() {
     
     if ( t == 0 ) {
       oled.setCursor( 0, 1 );
-      oled.print( "Temp: " );
+      oled.print( F("Temp: ") );
       oled.setCursor( 40, 1 );
       oled.print( data.temperature, 1 );
-      oled.clearToEOL();
+      oled.print( "  " );
+      
       oled.setCursor( 0, 2 );
-      oled.print( "Humid: " );
+      oled.print( F("Humid: ") );
       oled.setCursor( 40, 2 );
       oled.print( data.humidity, 1 );
-      oled.clearToEOL();
+      oled.print( "  " );
 
       logTemp  += data.temperature;
       logHumid += data.humidity;
       logCount++;
     } else {
       oled.setCursor( 0, 1 );
-      oled.print( String( "DHT12 error: " ) + t );
+      oled.print( String( F("DHT12 error: ") ) + t );
 #ifdef COM
-      _s.println( String( "DHT12 error: " ) + t );
+      _s.println( String( F("DHT12 error: ") ) + t );
 #endif
       oled.clearToEOL();
     }
+    
+    oled.setCursor( 80, 1 );
+    if ( WiFi.status() == WL_CONNECTED ) {
+      oled.print( "WiFi   " );
+    } else {
+      oled.print( "No WiFi" );
+      WiFi.mode( WIFI_STA );
+      WiFi.begin( config.ssid, config.pass );
+    }
 
     if ( second( time ) == 0 && minute( time ) == 0 ) {
-      File f = SPIFFS.open( "/log.txt", "a" );
+      File f = SPIFFS.open( F("/log.txt"), "a" );
       if ( !f ) {
         oled.setCursor( 0, 6 );
-        oled.print( "Failed to open log.txt" );
+        oled.print( F("Failed to open log.txt") );
 #ifdef COM
-        _s.println( "Failed to open log.txt" );
+        _s.println( F("Failed to open log.txt") );
 #endif
       } else {
         if ( logCount > 0 ) {
