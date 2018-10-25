@@ -9,197 +9,149 @@
  * https://github.com/esp8266/Arduino/issues/1381#issuecomment-195303597
  * 
  */
-#include <ESP8266WiFi.h>
 #include "GrowBox.h"
-
-const char * fetName[] = { "Fan1", "Fan2", "Light", "Pump" };
-const char   fetPin[]  = { 2, 0, 15, 13 };
 
 GrowBox::GrowBox() {
   init();
 }
 
+const char   *GrowBox::fetName[]   = { "led", "fan1", "fan2", "aux" };
+const uint8_t GrowBox::fetPin[]    = { 15, 2, 0, 13 };
+uint16_t      GrowBox::fetState[]  = { 0, 0, 0, 0 };
+
 void GrowBox::init() {
 #ifdef COM
   Serial.begin( 115200 );
   _s.println();
-  _s.println( F("Booting Sketch...") );
+  _s.println( F("GrowBox init") );
 #else
   pinMode( TX,  OUTPUT );
   pinMode( RX,  OUTPUT );
 #endif
 
-#ifdef I2C
   Wire.begin( SDA, SCL );
   oled.begin( &Adafruit128x64, I2C_OLED );
   oled.set400kHz();  
   oled.setFont( Adafruit5x7 );
   oled.setScroll( true );
   oled.clear();
-  oled.println( F("GrowBox") );
 #ifdef COM
   _s.println("Init OLED");
 #endif
-#else
-  pinMode( SDA, OUTPUT );
-  pinMode( SCL, OUTPUT );
-#ifdef COM
-  _s.println( F("Skipping WIRE") );
-#endif
-#endif
-  
-  config.read( "/config.json" );
-  delay( 100 );
-  
-  WiFi.mode( WIFI_STA );
-  WiFi.begin( config.ssid, config.pass );
 
-  uint8_t i = 0;
-  while ( WiFi.status() != WL_CONNECTED && i++ < 100 ) {
-    delay( 500 );
-    oled.print( "." );
-    if ( i % 20 == 0 )
-      oled.println( "" );
-  }
-  if ( WiFi.status() == WL_CONNECTED ) {
-    oled.println( F("\nConnected!") ); 
-    oled.println( WiFi.localIP() );
-  } else {
-    oled.println( F("Error connecting!") ); 
-  }
-  /* Time */  
-  setSyncInterval( 24*60*60 );  // Daily
-  setSyncProvider( getNtpTime );
-  
   pinMode( IO12, INPUT );
   pinMode( IO14, INPUT );
 
-  logCount = 0;
-  logTemp  = 0.0;
-  logHumid = 0.0;
+  millisUpd  = 0;
+  millisCalc = millis();
+  logCount   = 1;
+  logTemp    = temperature;
+  logHumid   = humidity;
   
-  data.fetState       = 0;
-  data.humidity       = 50.0;
-  data.temperature    = 20.0;
-  data.previousMillis = 0;
-
   // Initiate and switch all FETs off
-  for ( char fetNo = 0; fetNo < sizeof( fetPin ) - 1; fetNo++ ) {
-    pinMode( fetPin[fetNo], OUTPUT );
-    digitalWrite( fetPin[fetNo], LOW );
+  for ( uint8_t i = 0; i < sizeof( fetPin); i++ ) {
+    pinMode( fetPin[i], OUTPUT );
+    analogWrite( fetPin[i], 0 );
+    fetState[i] = 0;
   }
-  delay( 1000 );
-  oled.clear();
+}
+
+void GrowBox::doActivate() {
+  if ( temperature > config.tempMax )
+    ;
 }
 
 void GrowBox::update() {
-  unsigned long currentMillis = millis();
-  char    curTime[20];
-  char    buff[60];
+  unsigned long millisCur = millis();
   
-  time_t time = now() 
-    + config.tz * SECS_PER_HOUR
-    + ( dst( now(), config.tz ) ? 1 : 0 ) * SECS_PER_HOUR;
-  
-  snprintf ( curTime, sizeof(curTime), "%02d-%02d-%02d %02d:%02d:%02d",
-    year( time ), month( time ), day( time ),
-    hour( time ), minute( time ), second( time ) );
-  
-  oled.home();
-  oled.print( curTime );
-  oled.clearToEOL();
-  
-  if ( currentMillis - data.previousMillis >= INTERVAL ) {
-    data.previousMillis += INTERVAL;
-  
-#ifdef I2C
-    uint8_t t = dht12get();
+  if ( millisCur - millisUpd >= INTERVAL_UPD ) {
+    millisUpd += INTERVAL_UPD;
     
-    if ( t == 0 ) {
-      oled.setCursor( 0, 1 );
-      oled.print( F("Temp: ") );
-      oled.setCursor( 40, 1 );
-      oled.print( data.temperature, 1 );
-      oled.print( "  " );
-      
-      oled.setCursor( 0, 2 );
-      oled.print( F("Humid: ") );
-      oled.setCursor( 40, 2 );
-      oled.print( data.humidity, 1 );
-      oled.print( "  " );
-
-      logTemp  += data.temperature;
-      logHumid += data.humidity;
+    float t, h;
+    uint8_t i = dht12get( t, h );
+    if ( i == 0 ) {
+      temperature = t * 0.2 + temperature * 0.8;
+      humidity    = h * 0.2 + humidity    * 0.8;
+      logTemp  += temperature;
+      logHumid += humidity;
       logCount++;
     } else {
       oled.setCursor( 0, 1 );
-      oled.print( String( F("DHT12 error: ") ) + t );
+      oled.print( String( F("DHT12 error: ") ) + i );
 #ifdef COM
-      _s.println( String( F("DHT12 error: ") ) + t );
+      _s.println( String( F("DHT12 error: ") ) + i );
 #endif
-      oled.clearToEOL();
     }
     
-    oled.setCursor( 80, 1 );
-    if ( WiFi.status() == WL_CONNECTED ) {
-      oled.print( "WiFi   " );
-    } else {
-      oled.print( "No WiFi" );
-      WiFi.mode( WIFI_STA );
-      WiFi.begin( config.ssid, config.pass );
-    }
-
-    if ( second( time ) == 0 && minute( time ) == 0 ) {
-      File f = SPIFFS.open( F("/log.txt"), "a" );
-      if ( !f ) {
-        oled.setCursor( 0, 6 );
-        oled.print( F("Failed to open log.txt") );
-#ifdef COM
-        _s.println( F("Failed to open log.txt") );
-#endif
-      } else {
-        if ( logCount > 0 ) {
-          snprintf ( buff, 60, "\"%s\",%.1f,%.1f",
-            curTime, logTemp / logCount, data.humidity );
-//          f.println( buff );
-          oled.setCursor( 0, 4 );
-          oled.print( buff );
-          oled.clearToEOL();
-        }
-        f.close();
-      }
+  if ( millisCur - millisUpd >= INTERVAL_CALC ) {
+      millisCalc += INTERVAL_CALC;
       logCount = 0;
       logTemp  = 0.0;
       logHumid = 0.0;
-    }
-#endif
+  }
+//    if ( second( time ) == 0 && minute( time ) == 0 ) {
+//      File f = SPIFFS.open( F("/log.txt"), "a" );
+//      if ( !f ) {
+//        oled.setCursor( 0, 6 );
+//        oled.print( F("Failed to open log.txt") );
+//#ifdef COM
+//        _s.println( F("Failed to open log.txt") );
+//#endif
+//      } else {
+//        if ( logCount > 0 ) {
+//          snprintf ( buff, 60, "\"%s\",%.1f,%.1f",
+//            curTime, logTemp / logCount, humidity );
+////          f.println( buff );
+//          oled.setCursor( 0, 4 );
+//          oled.print( buff );
+//          oled.clearToEOL();
+//        }
+//        f.close();
+//      }
+//      logCount = 0;
+//      logTemp  = 0.0;
+//      logHumid = 0.0;
+//    }
 
   }
-  delay( 900 );
 }
 
-void GrowBox::fetSet( char fetNo, char value ) {
-  if ( value )
-    fetOn( fetNo );
-  else
-    fetOff( fetNo );
+void GrowBox::toJson( char *c, int size ) {
+  char buff[20];
+  strncpy( c, "{\"temp\":", size ); 
+  dtostrf( temperature, 0, 1, buff );
+  strncat( c, buff, size ); 
+  strncat( c, ",\"humid\":", size ); 
+  dtostrf( humidity, 0, 1, buff );
+  strncat( c, buff, size ); 
+    
+  for ( uint8_t i = 0; i < sizeof( fetPin); i++ ) {
+    strncat( c, ",\"", size );
+    strncat( c, fetName[i], size );
+    strncat( c, "\":", size );
+    itoa( fetStatus(i), buff, 10 );
+    strncat( c, buff, size ); // 0-1023
+  }
+  
+  strncat( c, ",\"uptime\":", size ); 
+  itoa( millis(), buff, 10 );
+  strncat( c, buff, size ); 
+  
+  strncat( c, "}", size ); 
 }
 
-void GrowBox::fetOn( char fetNo ) {
-  BIT_SET( data.fetState, fetNo );
-  digitalWrite( fetPin[fetNo], HIGH );
+void GrowBox::fetSet( uint8_t no, uint16_t value ) {
+  if ( no < sizeof( fetPin ) && value < 1024 ) {
+    fetState[no] = value;
+    analogWrite( fetPin[no], fetState[no] );
+  }
 }
 
-void GrowBox::fetOff( char fetNo ) {
-  BIT_CLEAR( data.fetState, fetNo );
-  digitalWrite( fetPin[fetNo], LOW );
+uint16_t GrowBox::fetStatus( uint8_t no ) {
+  return fetState[no];
 }
 
-char GrowBox::fetStatus( char fetNo ) {
-  return BIT_CHECK( data.fetState, fetNo );
-}
-
-uint8_t GrowBox::dht12get() {
+uint8_t GrowBox::dht12get( float &t, float &h ) {
   uint8_t buf[5];
   
   Wire.beginTransmission( (uint8_t) I2C_DHT12 );
@@ -217,70 +169,10 @@ uint8_t GrowBox::dht12get() {
 
   if ( buf[4]!=( buf[0] + buf[1] + buf[2] + buf[3] ) )
     return 3; // Checksum error
-    
-  data.humidity     = 0.2 * (buf[0] + (float) buf[1] / 10) + 0.8 * data.humidity;
-  data.temperature  = 0.2 * (buf[2] + (float) buf[3] / 10) + 0.8 * data.temperature;
-  
+
+  h = ( buf[0] + (float) buf[1] / 10 );
+  t = ( buf[2] + (float) buf[3] / 10 );
   return 0;
 }
 
-time_t getNtpTime() {
-  IPAddress   timeServer;
-  const char* ntpServerName = NTPSERVER;
-  byte        packetBuffer[NTP_PACKET_SIZE];
-  WiFiUDP     Udp;
-  
-  Udp.begin( TIMEPORT );
-  while ( Udp.parsePacket() > 0 );    // discard any previously received packets
-  WiFi.hostByName( ntpServerName, timeServer ); 
-  
-  // send an NTP request to the time server at the given address
-  // set all bytes in the buffer to 0
-  memset( packetBuffer, 0, NTP_PACKET_SIZE );
-  // Initialize values needed to form NTP request
-  // (see URL above for details on the packets)
-  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-  packetBuffer[1] = 0;     // Stratum, or type of clock
-  packetBuffer[2] = 6;     // Polling Interval
-  packetBuffer[3] = 0xEC;  // Peer Clock Precision
-  // 8 bytes of zero for Root Delay & Root Dispersion
-  packetBuffer[12]  = 49;
-  packetBuffer[13]  = 0x4E;
-  packetBuffer[14]  = 49;
-  packetBuffer[15]  = 52;
-  // all NTP fields have been given values, now
-  // you can send a packet requesting a timestamp:                 
-  Udp.beginPacket( timeServer, 123 ); //NTP requests are to port 123
-  Udp.write( packetBuffer, NTP_PACKET_SIZE );
-  Udp.endPacket();
-  
-  uint32_t beginWait = millis();
-  while ( millis() - beginWait < 1500 ) {
-    int size = Udp.parsePacket();
-    if ( size >= NTP_PACKET_SIZE ) {
-      Udp.read( packetBuffer, NTP_PACKET_SIZE );  // read packet into the buffer
-      unsigned long secsSince1900;
-      // convert four bytes starting at location 40 to a long integer
-      secsSince1900 =  (unsigned long)packetBuffer[40] << 24;
-      secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
-      secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
-      secsSince1900 |= (unsigned long)packetBuffer[43];
-      return secsSince1900 - 2208988800UL;
-    }
-  }
-  return 0; // return 0 if unable to get the time
-}
-
-bool dst( time_t t, uint8_t tz ) {
-  t += tz * SECS_PER_HOUR;
-  if ( month(t)  < 3 || month(t) > 10 )       // Jan, Feb, Nov, Dec 
-    return false;
-  if ( month(t)  > 3 && month(t) < 10 )       // Apr, Jun; Jul, Aug, Sep 
-    return true;
-  if ( month(t) ==  3 && ( hour(t) + 24 * day(t) ) >= ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 4 ) % 7 ) ) 
-    || month(t) == 10 && ( hour(t) + 24 * day(t) ) <  ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 1 ) % 7 ) ) )
-    return true;
-  else
-    return false;
-}
 

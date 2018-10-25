@@ -32,15 +32,34 @@ public:
   char       name[10];    // Controller name
   char       ssid[32];    // Network SSID
   char       pass[64];    // Network password
-  uint8_t    minHumid;    // Humidity Low
-  uint8_t    maxHumid;    // Humidity High
-  float      minTemp;     // Temperature Low
-  float      maxTemp;     // Temperature High
+  uint8_t    humidMin;    // Humidity Low
+  uint8_t    humidMax;    // Humidity High
+  float      tempMin;     // Temperature Low
+  float      tempMax;     // Temperature High
   int8_t     tz;          // TimeZone
-  int8_t     dst;         // Daylight Saving Time
+  uint8_t    dst;         // Daylight Saving Time
   
   Config() {
   }
+  
+//  void save( const char *filename ) {
+//    SPIFFS.begin();
+//    SPIFFS.remove( filename );
+//    File file = SPIFFS.open( filename, "W" );
+//    if ( !file )
+//      return;
+//    file.write( (uint8_t*)this, sizeof( Config ) );
+//    file.close();
+//  }
+//  
+//  void load( const char *filename ) {
+//    SPIFFS.begin();
+//    File file = SPIFFS.open( filename, "R" );
+//    if ( !file )
+//      return;
+//    file.read( (uint8_t*)this, sizeof( Config ) );
+//    file.close();
+//  }
   
   void read( const char *filename ) {
     SPIFFS.begin();
@@ -56,16 +75,49 @@ public:
       
       strlcpy( name, root["name"] | "DefName", sizeof( name ) );
       id       = root["id"] | 0;
-      minHumid = root["humidity"]["min"] | 30;
-      maxHumid = root["humidity"]["max"] | 95;
-      minTemp  = root["temperature"]["min"] | 14.0;
-      maxTemp  = root["temperature"]["max"] | 28.0;
+      humidMin = root["humidity"]["min"] | 30;
+      humidMax = root["humidity"]["max"] | 95;
+      tempMin  = root["temperature"]["min"] | 14.0;
+      tempMax  = root["temperature"]["max"] | 28.0;
       tz       = root["time"]["tz"]  | 1;
       dst      = root["time"]["dst"] | 1;
       strlcpy( ssid, root["network"][0]["ssid"] | "", sizeof( ssid ) );
       strlcpy( pass, root["network"][0]["password"] | "", sizeof( pass ) );
     }
     f.close();
+  }
+  
+  void toJson( char *c, int size ) {
+    char buff[10];
+    strncpy( c, "{\"id\":", size ); 
+    itoa( id, buff, 10 );
+    strncat( c, buff, size ); 
+    strncat( c, ",\"name\":\"", size ); 
+    strncat( c, name, size ); 
+    strncat( c, "\",\"humid\":[", size ); 
+    itoa( humidMin, buff, 10 );
+    strncat( c, buff, size ); 
+    strncat( c, ",", size ); 
+    itoa( humidMax, buff, 10 );
+    strncat( c, buff, size ); 
+    strncat( c, "],\"temp\":[", size ); 
+    dtostrf( tempMin, 0, 1, buff );
+    strncat( c, buff, size ); 
+    strncat( c, ",", size ); 
+    dtostrf( tempMax, 0, 1, buff );
+    strncat( c, buff, size ); 
+    strncat( c, "],\"tz\":", size ); 
+    itoa( tz, buff, 10 );
+    strncat( c, buff, size ); 
+    strncat( c, ",\"dst\":", size ); 
+    itoa( dst, buff, 10 );
+    strncat( c, buff, size );
+    strncat( c, ",\"wifi\":[\"", size ); 
+    strncat( c, ssid, size ); 
+    strncat( c, "\",\"", size ); 
+    strncat( c, pass, size ); 
+    strncat( c, "\"]", size ); 
+    strncat( c, "}", size ); 
   }
   
   void write( const char *filename ) {
@@ -76,13 +128,16 @@ public:
       Serial.println( F( "Failed to create file" ) );
       return;
     }
-
-    file.print( "{" );
-    file.print( String( "\"id\":"     ) + String( id       ) +String( "," ) );
-    file.print( String( "\"name\":\"" ) + String( name     ) +String( "\"," ) );
-    file.print( String( "\"humidity\":{\"min\":"    ) + minHumid + String( ",\"max\"" ) + maxHumid + String( "}," ) );
-    file.print( String( "\"temperature\":{\"min\":" ) + minTemp  + String( ",\"max\"" ) + maxTemp  + String( "}," ) );
-    file.print( "}" );
+    char temp[500];
+    snprintf_P( temp, sizeof( temp ),
+PSTR("{\"id\":%d,\"name\":\"%s\",\
+\"humidity\":{\"min\":%d,\"max\":%d},\
+\"temperature\":{\"min\":%f,\"max\":%f},\
+\"tz\":%d,\"dst\":%d,\
+}"),
+    id, name, humidMin, humidMax, tempMin, tempMax );
+    
+    file.print( temp );
     file.close();
   }
 };
