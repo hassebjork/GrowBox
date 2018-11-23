@@ -18,31 +18,33 @@ GrowBox growBox;
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+#include <ESP8266HTTPUpdateServer.h>
 extern "C" {
   #include "user_interface.h"
 }
-ESP8266WebServer httpServer(80);
+ESP8266WebServer server(80);
+ESP8266HTTPUpdateServer httpUpdater;
 
 const char spinner[] = ".oOo";
 
 /* TODO: Add limits */
 void argFloat( float &f, const char *s ) {
-  if ( httpServer.hasArg( s ) )
-    f = atof( httpServer.arg( s ).c_str() );
+  if ( server.hasArg( s ) )
+    f = atof( server.arg( s ).c_str() );
 }
 void argInt( uint8_t &f, const char *s ) {
-  if ( httpServer.hasArg( s ) )
-    f = atoi( httpServer.arg( s ).c_str() );
+  if ( server.hasArg( s ) )
+    f = atoi( server.arg( s ).c_str() );
 }
 void argInt( int8_t &f, const char *s ) {
-  if ( httpServer.hasArg( s ) )
-    f = atoi( httpServer.arg( s ).c_str() );
+  if ( server.hasArg( s ) )
+    f = atoi( server.arg( s ).c_str() );
 }
 
 void handleIO() {
   for ( uint8_t i = 0; i < GrowBox::fetNo; i++ ) {
-    if ( httpServer.hasArg( GrowBox::fetName[i] ) )
-      growBox.fetSet( i, atoi( httpServer.arg( GrowBox::fetName[i]).c_str() ) );
+    if ( server.hasArg( GrowBox::fetName[i] ) )
+      growBox.fetSet( i, atoi( server.arg( GrowBox::fetName[i]).c_str() ) );
   }
   
   argFloat( config.tempMin,   "TEMPMIN"  );
@@ -66,7 +68,7 @@ void handleRoot() {
     strncat( buff, "<a href=\"?", sizeof( buff ) );
     strncat( buff, GrowBox::fetName[i], sizeof( buff ) );
     strncat( buff, "=", sizeof( buff ) );
-    strncat( buff, (growBox.fetStatus(i)?"0":"1"), sizeof( buff ) );
+    strncat( buff, (growBox.fetStatus(i)?"0":"1023"), sizeof( buff ) );
     strncat( buff, "\">", sizeof( buff ) );
     strncat( buff, GrowBox::fetName[i], sizeof( buff ) );
     strncat( buff, "</a> ", sizeof( buff ) );
@@ -91,7 +93,8 @@ PSTR("<html>\
     growBox.temperature, growBox.humidity,
     buff
   );
-  httpServer.send ( 200, "text/html", temp );
+  server.sendHeader("Connection", "close");
+  server.send ( 200, "text/html", temp );
 }
 
 void handleJSON() {
@@ -108,7 +111,8 @@ void handleJSON() {
   strncat( temp, buff, sizeof( temp ) );
   strncat( temp, "}", sizeof( temp ) );
   
-  httpServer.send ( 200, "application/json", temp );
+  server.sendHeader("Connection", "close");
+  server.send ( 200, "application/json", temp );
 }
 
 void initWifi(){
@@ -125,21 +129,14 @@ void initWifi(){
   
   growBox.oled.setCursor( 0, 0 );
   if ( WiFi.status() == WL_CONNECTED ) {
-    growBox.oled.print( WiFi.localIP() );
-    growBox.oled.print( " WiFi " );
-    
-    if ( MDNS.begin( config.name ) ) {
-      growBox.oled.print( "*  " );
-    }
-    httpServer.on( "/", handleRoot );
-    httpServer.on( "/js", handleJSON );
-    httpServer.begin();
+    MDNS.begin( config.name );
+    server.on( "/", handleRoot );
+    server.on( "/js", handleJSON );
+    httpUpdater.setup( &server );
+    server.begin();
     MDNS.addService("http", "tcp", 80);
-  } else {
-    growBox.oled.print( "No WiFi     " ); 
   }
-  
-  growBox.oled.println( config.name );
+  growBox.oled.clear();
 }
 
 void setup(void){
@@ -154,18 +151,20 @@ void loop(void){
   growBox.update();
   
   if ( WiFi.status() == WL_CONNECTED ) {
-    httpServer.handleClient();
-//  } else {
-//    initWifi();
+    server.handleClient();
+  } else {
+    initWifi();
   }
   
-  growBox.oled.setCursor( 0, 1 );
-  growBox.oled.println( config.name );
-  growBox.oled.print( "Temp:  " );
-  growBox.oled.println( growBox.temperature, 1 );
-  growBox.oled.print( "Humid: " );
-  growBox.oled.println( growBox.humidity, 1 );
-  growBox.oled.println( millis() );
+  growBox.oled.setCursor( 0, 0 );
+  growBox.oled.printf( "%*s\n", 10 + strlen( config.name ) / 2, config.name );
+  if ( WiFi.status() == WL_CONNECTED ) {
+    growBox.oled.print( WiFi.localIP() );
+    growBox.oled.println( " WiFi" );
+  } else {
+    growBox.oled.println( "No WiFi" );
+  }
+  growBox.oled.printf( "% 7.1fC% 7.1f%%\n", growBox.temperature, growBox.humidity );
 
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
   delay( 900 );
