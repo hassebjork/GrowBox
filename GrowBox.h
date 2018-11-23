@@ -27,9 +27,7 @@
 #include <Wire.h>
 #include "SSD1306Ascii.h"       // https://github.com/greiman/SSD1306Ascii
 #include "SSD1306AsciiWire.h"   // https://github.com/greiman/SSD1306Ascii
-#define _s oled
-
-#include "Config.h"       // Configuration class for local storage
+#include "Config.h"             // Configuration class for local storage
 extern Config config;
 
 class GrowBox {

@@ -20,27 +20,13 @@ const uint8_t GrowBox::fetPin[]    = { 15, 2, 0, 13 };
 uint16_t      GrowBox::fetState[]  = { 0, 0, 0, 0 };
 
 void GrowBox::init() {
-#ifdef COM
-  Serial.begin( 115200 );
-  _s.println();
-  _s.println( F("GrowBox init") );
-#else
-  pinMode( TX,  OUTPUT );
-  pinMode( RX,  OUTPUT );
-#endif
-
   Wire.begin( SDA, SCL );
-  oled.begin( &Adafruit128x64, I2C_OLED );
+  oled.begin( &Adafruit128x32, I2C_OLED );
+//  oled.begin( &Adafruit128x64, I2C_OLED );
   oled.set400kHz();  
   oled.setFont( Adafruit5x7 );
-  oled.setScroll( true );
+  oled.setScroll( false );
   oled.clear();
-#ifdef COM
-  _s.println("Init OLED");
-#endif
-
-  pinMode( IO12, INPUT );
-  pinMode( IO14, INPUT );
 
   millisUpd  = 0;
   millisCalc = millis();
@@ -75,12 +61,6 @@ void GrowBox::update() {
       logTemp  += temperature;
       logHumid += humidity;
       logCount++;
-    } else {
-      oled.setCursor( 0, 1 );
-      oled.print( String( F("DHT12 error: ") ) + i );
-#ifdef COM
-      _s.println( String( F("DHT12 error: ") ) + i );
-#endif
     }
     
   if ( millisCur - millisUpd >= INTERVAL_CALC ) {
