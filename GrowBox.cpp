@@ -27,15 +27,18 @@ void GrowBox::init() {
   oled.setFont( Adafruit5x7 );
   oled.setScroll( false );
   oled.clear();
+  
+  uint8_t i = dht12get( temperature, humidity );
 
   millisUpd  = 0;
-  millisCalc = millis();
+  logMillis  = millis();
   logCount   = 1;
   logTemp    = temperature;
   logHumid   = humidity;
+  analogWriteFreq( 10000 );
   
   // Initiate and switch all FETs off
-  for ( uint8_t i = 0; i < sizeof( fetPin); i++ ) {
+  for ( i = 0; i < sizeof( fetPin); i++ ) {
     pinMode( fetPin[i], OUTPUT );
     analogWrite( fetPin[i], 0 );
     fetState[i] = 0;
@@ -64,7 +67,7 @@ void GrowBox::update() {
     }
     
   if ( millisCur - millisUpd >= INTERVAL_CALC ) {
-      millisCalc += INTERVAL_CALC;
+      logMillis += INTERVAL_CALC;
       logCount = 0;
       logTemp  = 0.0;
       logHumid = 0.0;
@@ -133,6 +136,8 @@ uint16_t GrowBox::fetStatus( uint8_t no ) {
 
 uint8_t GrowBox::dht12get( float &t, float &h ) {
   uint8_t buf[5];
+  t = 0.0;
+  h = 0.0;
   
   Wire.beginTransmission( (uint8_t) I2C_DHT12 );
   Wire.write(0);

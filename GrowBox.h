@@ -43,8 +43,8 @@ public:
   SSD1306AsciiWire oled;
   float    humidity;         // Air humidity
   float    temperature;      // Air temperature
-  unsigned long millisUpd;  // Last update of temp/humid
-  unsigned long millisCalc; // Last avg calculation
+  unsigned long millisUpd;   // Last update of temp/humid
+  unsigned long logMillis;   // Last avg calculation
   float    logTemp;
   float    logHumid;
   uint16_t logCount;
