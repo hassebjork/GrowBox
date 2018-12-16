@@ -24,6 +24,7 @@ extern "C" {
 }
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
+WiFiEventHandler disconnectedEventHandler;  // https://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/generic-examples.html#event-driven-methods
 
 const char spinner[] = ".oOo";
 
@@ -42,9 +43,16 @@ void argInt( int8_t &f, const char *s ) {
 }
 
 void handleIO() {
+  int t;
   for ( uint8_t i = 0; i < GrowBox::fetNo; i++ ) {
-    if ( server.hasArg( GrowBox::fetName[i] ) )
-      growBox.fetSet( i, atoi( server.arg( GrowBox::fetName[i]).c_str() ) );
+    if ( server.hasArg( GrowBox::fetName[i] ) ) {
+      t = atoi( server.arg( GrowBox::fetName[i]).c_str() );
+      if ( t > 1023 ) 
+        t = 1023;
+      if ( t < 0 ) 
+        t = 0;
+      growBox.fetSet( i, t );
+    }
   }
   
   argFloat( config.tempMin,   "TEMPMIN"  );
@@ -55,8 +63,14 @@ void handleIO() {
   argInt(   config.dst,       "dst"      );
 }
 
+void handleBoot() {
+  growBox.oled.clear();
+  growBox.oled.println( "* * * REBOOT * * *" );
+  ESP.restart();
+}
+
 void handleRoot() {
-  char temp[500];
+  char temp[300];
   int sec = millis() / 1000;
   int min = sec / 60;
   int hr = min / 60;
@@ -64,34 +78,9 @@ void handleRoot() {
   
   handleIO();
 
-  for ( uint8_t i = 0; i < GrowBox::fetNo; i++ ) {
-    strncat( buff, "<a href=\"?", sizeof( buff ) );
-    strncat( buff, GrowBox::fetName[i], sizeof( buff ) );
-    strncat( buff, "=", sizeof( buff ) );
-    strncat( buff, (growBox.fetStatus(i)?"0":"1023"), sizeof( buff ) );
-    strncat( buff, "\">", sizeof( buff ) );
-    strncat( buff, GrowBox::fetName[i], sizeof( buff ) );
-    strncat( buff, "</a> ", sizeof( buff ) );
-  }
-
   snprintf_P( temp, sizeof( temp ),
-PSTR("<html>\
-  <head>\
-    <meta http-equiv='refresh' content='5'/>\
-    <title>%s</title>\
-    <link rel='stylesheet' href='http://bjork.es/handheld.css' type='text/css' />\
-  </head>\
-  <body>\
-    <h1>%s</h1>\
-    <div><span>Uptime:</span> %02d:%02d:%02d</div>\
-    <div><span>Temperature:</span> %.1f</div>\
-    <div><span>Humidity:</span> %.1f</div>\
-    <div>%s</div>\
-  </body>\
-</html>"),
-    config.name, config.name, hr, min % 60, sec % 60,
-    growBox.temperature, growBox.humidity,
-    buff
+    PSTR("<html><head><script src='https://bjork.es/js/growbox.js?l=%d'></script></head><body></body></html>"),
+    millis()
   );
   server.sendHeader("Connection", "close");
   server.send ( 200, "text/html", temp );
@@ -132,6 +121,7 @@ void initWifi(){
     MDNS.begin( config.name );
     server.on( "/", handleRoot );
     server.on( "/js", handleJSON );
+    server.on( "/boot", handleBoot );
     httpUpdater.setup( &server );
     server.begin();
     MDNS.addService("http", "tcp", 80);
@@ -143,6 +133,10 @@ void setup(void){
   config.read( "/config.json" );
   growBox.init();
   growBox.oled.clear();
+  disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
+    growBox.oled.println("Station disconnected");
+    initWifi();
+  });
   initWifi();
 //  gtime.init( config.tz, config.dst );  
 }
@@ -165,8 +159,10 @@ void loop(void){
     growBox.oled.println( "No WiFi" );
   }
   growBox.oled.printf( "% 7.1fC% 7.1f%%\n", growBox.temperature, growBox.humidity );
+  
+  growBox.oled.printf( "Led:% 4d   Fan:% 4d \n", growBox.fetStatus( 0 ), growBox.fetStatus( 1 ) );
 
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
-  delay( 900 );
+//  delay( 900 );
 }
 
