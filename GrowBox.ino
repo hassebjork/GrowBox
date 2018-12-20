@@ -1,5 +1,8 @@
 /* Strings
  *   https://hackingmajenkoblog.wordpress.com/2016/02/04/the-evils-of-arduino-strings/
+ * 
+ * Upload file to SPIFFS
+ *   https://tttapa.github.io/ESP8266/Chap12%20-%20Uploading%20to%20Server.html
  */
 
 #include "Config.h"       // Configuration class for local storage
@@ -66,6 +69,11 @@ void handleIO() {
 void handleBoot() {
   growBox.oled.clear();
   growBox.oled.println( "* * * REBOOT * * *" );
+  server.sendHeader( "Location", String("/"), true );
+  server.send ( 302, "text/plain", "" );
+  delay( 2500 );
+  WiFi.disconnect();
+  growBox.oled.clear();
   ESP.restart();
 }
 
@@ -110,7 +118,7 @@ void initWifi(){
   WiFi.mode( WIFI_STA );
   WiFi.begin( config.ssid, config.pass );
   
-  while ( WiFi.status() != WL_CONNECTED && i++ < 100 ) {
+  while ( WiFi.status() != WL_CONNECTED && i++ < 10 ) {
     delay( 500 );
     growBox.oled.setCursor( 0, 1 );
     growBox.oled.print( spinner[ i % sizeof( spinner ) ] );
@@ -138,6 +146,7 @@ void setup(void){
     initWifi();
   });
   initWifi();
+  
 //  gtime.init( config.tz, config.dst );  
 }
 
@@ -151,18 +160,23 @@ void loop(void){
   }
   
   growBox.oled.setCursor( 0, 0 );
-  growBox.oled.printf( "%*s\n", 10 + strlen( config.name ) / 2, config.name );
+  growBox.oled.printf( "%*s ", 10 + strlen( config.name ) / 2, config.name );
+  
+  growBox.oled.setCursor( 0, 1 );
   if ( WiFi.status() == WL_CONNECTED ) {
     growBox.oled.print( WiFi.localIP() );
     growBox.oled.println( " WiFi" );
   } else {
     growBox.oled.println( "No WiFi" );
   }
-  growBox.oled.printf( "% 7.1fC% 7.1f%%\n", growBox.temperature, growBox.humidity );
   
+  growBox.oled.setCursor( 0, 2 );
+  growBox.oled.printf( "% 7.1fC% 7.1f%% ", growBox.temperature, growBox.humidity );
+  
+  growBox.oled.setCursor( 0, 3 );
   growBox.oled.printf( "Led:% 4d   Fan:% 4d \n", growBox.fetStatus( 0 ), growBox.fetStatus( 1 ) );
 
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
-//  delay( 900 );
+  yield();
 }
 
