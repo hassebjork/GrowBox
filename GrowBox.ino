@@ -1,20 +1,23 @@
 /* Strings
  *   https://hackingmajenkoblog.wordpress.com/2016/02/04/the-evils-of-arduino-strings/
  * 
- * Upload file to SPIFFS
- *   https://tttapa.github.io/ESP8266/Chap12%20-%20Uploading%20to%20Server.html
  */
 
-#include "Config.h"       // Configuration class for local storage
+#include "Config.h"                         // Configuration class for local storage
 Config config;
 
 #include "GrowBox.h"
 GrowBox growBox;
 
-//#include "GTime.h"
-//GTime gtime;
+#include <TimeLib.h>      // https://github.com/PaulStoffregen/Time
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
 
-#include <pgmspace.h>     // PSTR & PROGMEM
+const char * headerKeys[] = { "date" };
+const size_t numberOfHeaders = 1;
+const char * _months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }; 
+
+#include <pgmspace.h>                       // PSTR & PROGMEM
 
 #include <math.h>
 #include <ESP8266WiFi.h>
@@ -30,6 +33,50 @@ ESP8266HTTPUpdateServer httpUpdater;
 WiFiEventHandler disconnectedEventHandler;  // https://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/generic-examples.html#event-driven-methods
 
 const char spinner[] = ".oOo";
+
+time_t syncHTTP() {
+  tmElements_t tm;
+  if ( WiFi.status() == WL_CONNECTED ) {
+    HTTPClient http;
+    http.begin( "http://google.com/" ); 
+    http.collectHeaders( headerKeys, numberOfHeaders );
+    
+    if ( http.GET() > 0 ) {
+      uint8_t i;
+      String headerDate = http.header("date");
+      const char * str  = headerDate.c_str();
+      const char * mo   = headerDate.substring( 8, 11 ).c_str();
+      
+      for ( i = 0; i < 12; i++ ) {
+        if ( strncmp( _months[i], mo, 3 ) == 0 )
+          break;
+      }
+      
+      tm.Year   = ( str[14] - '0' ) * 10 + ( str[15] - '0' ) + 30;
+      tm.Month  = i;
+      tm.Day    = ( str[5]  - '0' ) * 10 + ( str[6]  - '0' );
+      tm.Hour   = ( str[17] - '0' ) * 10 + ( str[18] - '0' );
+      tm.Minute = ( str[20] - '0' ) * 10 + ( str[21] - '0' );
+      tm.Second = ( str[23] - '0' ) * 10 + ( str[24] - '0' );
+    }
+    http.end();
+  }
+  return makeTime( tm );
+}
+bool checkDst() {
+  if ( !config.dst ) 
+    return false;
+  time_t t = now() + config.tz * SECS_PER_HOUR;
+  if ( month(t)  < 3 || month(t) > 10 )       // Jan, Feb, Nov, Dec 
+    return false;
+  if ( month(t)  > 3 && month(t) < 10 )       // Apr, Jun; Jul, Aug, Sep 
+    return true;
+  if ( month(t) ==  3 && ( hour(t) + 24 * day(t) ) >= ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 4 ) % 7 ) ) 
+    || month(t) == 10 && ( hour(t) + 24 * day(t) ) <  ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 1 ) % 7 ) ) )
+    return true;
+  else
+    return false;
+}
 
 /* TODO: Add limits */
 void argFloat( float &f, const char *s ) {
@@ -50,8 +97,8 @@ void handleIO() {
   for ( uint8_t i = 0; i < GrowBox::fetNo; i++ ) {
     if ( server.hasArg( GrowBox::fetName[i] ) ) {
       t = atoi( server.arg( GrowBox::fetName[i]).c_str() );
-      if ( t > 1023 ) 
-        t = 1023;
+      if ( t > 1022 ) 
+        t = 1022;
       if ( t < 0 ) 
         t = 0;
       growBox.fetSet( i, t );
@@ -146,12 +193,18 @@ void setup(void){
     initWifi();
   });
   initWifi();
-  
-//  gtime.init( config.tz, config.dst );  
+  setSyncInterval( 24*60*60 );    // Daily
+  setSyncProvider( syncHTTP );
 }
 
 void loop(void){
+  time_t t = now() + config.tz * SECS_PER_HOUR + ( checkDst() ? SECS_PER_HOUR : 0 );
   growBox.update();
+
+  if ( hour( t ) == 6 && minute( t ) == 15 && growBox.fetStatus( 0 ) == 0 )
+    growBox.fetSet( 0, 1022 );
+  if ( hour( t ) == 20 && minute( t ) == 00 && growBox.fetStatus( 0 ) > 0 )
+    growBox.fetSet( 0, 0 );
   
   if ( WiFi.status() == WL_CONNECTED ) {
     server.handleClient();
@@ -160,21 +213,22 @@ void loop(void){
   }
   
   growBox.oled.setCursor( 0, 0 );
-  growBox.oled.printf( "%*s ", 10 + strlen( config.name ) / 2, config.name );
+  growBox.oled.printf( "%s%*s%02d:%02d:%02d ", 
+    config.name, 13 - strlen( config.name ), "", // OLED width 21.5 char
+    hour( t ), minute( t ), second( t ) );
   
   growBox.oled.setCursor( 0, 1 );
   if ( WiFi.status() == WL_CONNECTED ) {
     growBox.oled.print( WiFi.localIP() );
-    growBox.oled.println( " WiFi" );
   } else {
-    growBox.oled.println( "No WiFi" );
+    growBox.oled.println( "No WiFi " );
   }
   
   growBox.oled.setCursor( 0, 2 );
   growBox.oled.printf( "% 7.1fC% 7.1f%% ", growBox.temperature, growBox.humidity );
   
   growBox.oled.setCursor( 0, 3 );
-  growBox.oled.printf( "Led:% 4d   Fan:% 4d \n", growBox.fetStatus( 0 ), growBox.fetStatus( 1 ) );
+//  growBox.oled.printf( "Led:% 4d   Fan:% 4d \n", growBox.fetStatus( 0 ), growBox.fetStatus( 1 ) );
 
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
   yield();

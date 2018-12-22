@@ -16,7 +16,11 @@
  * https://www.esp8266.com/viewtopic.php?f=29&t=8194
  * https://blog.squix.org/2015/08/esp8266arduino-playing-around-with.html
  * 
+ * POST file to SPIFFS
+ * https://tttapa.github.io/ESP8266/Chap12%20-%20Uploading%20to%20Server.html
  * 
+ * WiFi Manager
+ * https://github.com/tzapu/WiFiManager
  */
 
 #ifndef _Config_h

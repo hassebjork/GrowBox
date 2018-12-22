@@ -35,7 +35,7 @@ void GrowBox::init() {
   logCount   = 1;
   logTemp    = temperature;
   logHumid   = humidity;
-  analogWriteFreq( 10000 );
+  analogWriteFreq( 25000 );
   
   // Initiate and switch all FETs off
   for ( i = 0; i < sizeof( fetPin); i++ ) {
