@@ -97,10 +97,6 @@ void handleIO() {
   for ( uint8_t i = 0; i < GrowBox::fetNo; i++ ) {
     if ( server.hasArg( GrowBox::fetName[i] ) ) {
       t = atoi( server.arg( GrowBox::fetName[i]).c_str() );
-      if ( t > 1022 ) 
-        t = 1022;
-      if ( t < 0 ) 
-        t = 0;
       growBox.fetSet( i, t );
     }
   }
@@ -117,6 +113,7 @@ void handleBoot() {
   growBox.oled.clear();
   growBox.oled.println( "* * * REBOOT * * *" );
   server.sendHeader( "Location", String("/"), true );
+  server.sendHeader( "Connection", "close" );
   server.send ( 302, "text/plain", "" );
   delay( 2500 );
   WiFi.disconnect();
@@ -125,19 +122,14 @@ void handleBoot() {
 }
 
 void handleRoot() {
-  char temp[300];
-  int sec = millis() / 1000;
-  int min = sec / 60;
-  int hr = min / 60;
-  char buff[120] = "";
-  
+  char temp[120];
   handleIO();
-
   snprintf_P( temp, sizeof( temp ),
     PSTR("<html><head><script src='https://bjork.es/js/growbox.js?l=%d'></script></head><body></body></html>"),
     millis()
   );
-  server.sendHeader("Connection", "close");
+  server.sendHeader( "Cache-Control", "public, max-age=86400" );
+  server.sendHeader( "Connection", "close" );
   server.send ( 200, "text/html", temp );
 }
 
@@ -155,7 +147,8 @@ void handleJSON() {
   strncat( temp, buff, sizeof( temp ) );
   strncat( temp, "}", sizeof( temp ) );
   
-  server.sendHeader("Connection", "close");
+  server.sendHeader( "Cache-Control", "no-cache" );
+  server.sendHeader( "Connection", "close" );
   server.send ( 200, "application/json", temp );
 }
 
@@ -173,7 +166,8 @@ void initWifi(){
   
   growBox.oled.setCursor( 0, 0 );
   if ( WiFi.status() == WL_CONNECTED ) {
-    MDNS.begin( config.name );
+    if ( !MDNS.begin( config.name ) )
+      delay( 500 );
     server.on( "/", handleRoot );
     server.on( "/js", handleJSON );
     server.on( "/boot", handleBoot );
@@ -202,9 +196,9 @@ void loop(void){
   growBox.update();
 
   if ( hour( t ) == 6 && minute( t ) == 15 && growBox.fetStatus( 0 ) == 0 )
-    growBox.fetSet( 0, 1022 );
+    growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
   if ( hour( t ) == 20 && minute( t ) == 00 && growBox.fetStatus( 0 ) > 0 )
-    growBox.fetSet( 0, 0 );
+    growBox.fetSet( GrowBox::LED, 0 );
   
   if ( WiFi.status() == WL_CONNECTED ) {
     server.handleClient();
