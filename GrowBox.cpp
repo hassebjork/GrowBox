@@ -11,13 +11,14 @@
  */
 #include "GrowBox.h"
 
-GrowBox::GrowBox() {
-  init();
-}
-
+const int     GrowBox::PWM_MAX     = 1023;
 const char   *GrowBox::fetName[]   = { "led", "fan1", "fan2", "aux" };
 const uint8_t GrowBox::fetPin[]    = { 15, 2, 0, 13 };
 uint16_t      GrowBox::fetState[]  = { 0, 0, 0, 0 };
+
+GrowBox::GrowBox() {
+  init();
+}
 
 void GrowBox::init() {
   Wire.begin( SDA, SCL );
@@ -58,6 +59,8 @@ void GrowBox::update() {
     
     float t, h;
     uint8_t i = dht12get( t, h );
+    int fan, led;
+    
     if ( i == 0 ) {
       temperature = t * 0.2 + temperature * 0.8;
       humidity    = h * 0.2 + humidity    * 0.8;
@@ -65,6 +68,35 @@ void GrowBox::update() {
       logHumid += humidity;
       logCount++;
     }
+
+    
+    led = analogRead( fetPin[GrowBox::LED] );
+    fan = analogRead( fetPin[GrowBox::FAN1] );
+
+    // Temp max + 2C
+    if ( temperature > config.tempMax + 2.0 ) {
+      analogWrite( fetPin[GrowBox::FAN1], GrowBox::PWM_MAX );
+      analogWrite( fetPin[GrowBox::LED], ( led > 10 ? led - 10 : 0 ) );
+
+    // Temp Max
+    } else if ( temperature > config.tempMax ) {
+      if ( led < fetState[GrowBox::LED] )
+        analogWrite( fetPin[GrowBox::LED], ( led + 10 < fetState[GrowBox::LED] ? led + 10 : fetState[GrowBox::LED] ) );
+      analogWrite( fetPin[GrowBox::FAN1], ( fan + 10 < GrowBox::PWM_MAX ? fan + 10 : GrowBox::PWM_MAX ) );
+
+    // Normal temp
+    } else {
+      if ( led > fetState[GrowBox::LED] )
+        analogWrite( fetPin[GrowBox::LED], ( led - 10 > fetState[GrowBox::LED] ? led - 10 : fetState[GrowBox::LED] ) );
+      else if ( led < fetState[GrowBox::LED] )
+        analogWrite( fetPin[GrowBox::LED], ( led + 10 < fetState[GrowBox::LED] ? led + 10 : fetState[GrowBox::LED] ) );
+        
+      if ( fan > fetState[GrowBox::FAN1] )
+        analogWrite( fetPin[GrowBox::FAN1], ( fan - 10 > fetState[GrowBox::FAN1] ? fan - 10 : fetState[GrowBox::FAN1] ) );
+      else if ( fan < fetState[GrowBox::FAN1] )
+        analogWrite( fetPin[GrowBox::FAN1], ( fan + 10 < fetState[GrowBox::FAN1] ? fan + 10 : fetState[GrowBox::FAN1] ) );
+    }
+  }
     
   if ( millisCur - millisUpd >= INTERVAL_CALC ) {
       logMillis += INTERVAL_CALC;
@@ -95,8 +127,6 @@ void GrowBox::update() {
 //      logTemp  = 0.0;
 //      logHumid = 0.0;
 //    }
-
-  }
 }
 
 void GrowBox::toJson( char *c, int size ) {
@@ -124,7 +154,9 @@ void GrowBox::toJson( char *c, int size ) {
 }
 
 void GrowBox::fetSet( uint8_t no, uint16_t value ) {
-  if ( no < sizeof( fetPin ) && value < 1024 ) {
+  if ( no < sizeof( fetPin ) && no > 0 ) {
+    if ( value < 0 )       value = 0;
+    if ( value > GrowBox::PWM_MAX ) value = GrowBox::PWM_MAX;
     fetState[no] = value;
     analogWrite( fetPin[no], fetState[no] );
   }

@@ -35,10 +35,10 @@ public:
   enum FET {
     LED, FAN1, FAN2, AUX, fetNo
   };
-
   static const char    *fetName[];
   static const uint8_t  fetPin[];
   static       uint16_t fetState[];
+  static const int      PWM_MAX;
   
   SSD1306AsciiWire oled;
   float    humidity;         // Air humidity
