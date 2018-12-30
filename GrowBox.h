@@ -57,6 +57,9 @@ public:
   void     fetSet( uint8_t no, uint16_t value );
   uint16_t fetStatus( uint8_t no );
   uint8_t  dht12get( float &t, float &h );
+
+  private:
+  void     dim( uint8_t no, int8_t  v=0 );
 };
 
 #endif

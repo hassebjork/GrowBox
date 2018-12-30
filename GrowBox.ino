@@ -60,6 +60,13 @@ time_t syncHTTP() {
       tm.Second = ( str[23] - '0' ) * 10 + ( str[24] - '0' );
     }
     http.end();
+  } else {
+    tm.Year   = 2000;
+    tm.Month  = 1;
+    tm.Day    = 1;
+    tm.Hour   = 0;
+    tm.Minute = 0;
+    tm.Second = 0;
   }
   return makeTime( tm );
 }
@@ -193,12 +200,12 @@ void setup(void){
 
 void loop(void){
   time_t t = now() + config.tz * SECS_PER_HOUR + ( checkDst() ? SECS_PER_HOUR : 0 );
-  growBox.update();
-
   if ( hour( t ) == 6 && minute( t ) == 15 && growBox.fetStatus( 0 ) == 0 )
     growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
   if ( hour( t ) == 20 && minute( t ) == 00 && growBox.fetStatus( 0 ) > 0 )
     growBox.fetSet( GrowBox::LED, 0 );
+  
+  growBox.update();
   
   if ( WiFi.status() == WL_CONNECTED ) {
     server.handleClient();
