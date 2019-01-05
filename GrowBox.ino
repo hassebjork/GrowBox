@@ -201,7 +201,7 @@ void setup(void){
 void loop(void){
   time_t t = now() + config.tz * SECS_PER_HOUR + ( checkDst() ? SECS_PER_HOUR : 0 );
   if ( hour( t ) == 6 && minute( t ) == 15 && growBox.fetStatus( 0 ) == 0 )
-    growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
+    growBox.fetSet( GrowBox::LED, 1 );
   if ( hour( t ) == 20 && minute( t ) == 00 && growBox.fetStatus( 0 ) > 0 )
     growBox.fetSet( GrowBox::LED, 0 );
   

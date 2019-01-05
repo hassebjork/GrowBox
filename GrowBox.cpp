@@ -11,7 +11,7 @@
  */
 #include "GrowBox.h"
 
-const int     GrowBox::PWM_MAX     = 1022;
+const int     GrowBox::PWM_MAX     = 1023;
 const char   *GrowBox::fetName[]   = { "led", "fan1", "fan2", "aux" };
 const uint8_t GrowBox::fetPin[]    = { 15, 2, 0, 13 };
 uint16_t      GrowBox::fetState[]  = { 0, 0, 0, 0 };
@@ -32,23 +32,13 @@ void GrowBox::init() {
   uint8_t i = dht12get( temperature, humidity );
 
   millisUpd  = 0;
-  logMillis  = millis();
-  logCount   = 1;
-  logTemp    = temperature;
-  logHumid   = humidity;
-  analogWriteFreq( 25000 );
   
   // Initiate and switch all FETs off
   for ( i = 0; i < sizeof( fetPin); i++ ) {
     pinMode( fetPin[i], OUTPUT );
-    analogWrite( fetPin[i], 0 );
+    digitalWrite( fetPin[i], 0 );
     fetState[i] = 0;
   }
-}
-
-void GrowBox::doActivate() {
-  if ( temperature > config.tempMax )
-    ;
 }
 
 void GrowBox::update() {
@@ -64,79 +54,28 @@ void GrowBox::update() {
     if ( i == 0 ) {
       temperature = t * 0.2 + temperature * 0.8;
       humidity    = h * 0.2 + humidity    * 0.8;
-      logTemp  += temperature;
-      logHumid += humidity;
-      logCount++;
     }
 
     
     // Temp max + 2C
     if ( temperature > config.tempMax + 2.0 ) {
-      analogWrite( fetPin[GrowBox::FAN1], GrowBox::PWM_MAX );
-      dim( GrowBox::LED, -10 );
+      digitalWrite( fetPin[GrowBox::FAN1], 1 );
+      digitalWrite( fetPin[GrowBox::LED],  0 );
 
     // Temp Max
     } else if ( temperature > config.tempMax ) {
-      dim( GrowBox::LED );
-      dim( GrowBox::FAN1, +10 );
+      digitalWrite( fetPin[GrowBox::FAN1], 1 );
+      digitalWrite( fetPin[GrowBox::LED],  fetState[GrowBox::LED] );
 
     // Normal temp
+    } else if ( humidity > config.humidMax ) {
+      digitalWrite( fetPin[GrowBox::FAN1], 1 );
+      digitalWrite( fetPin[GrowBox::LED],  fetState[GrowBox::LED] );
     } else {
-      if ( humidity > config.humidMax )
-        dim( GrowBox::FAN1, +10 );
-      else {
-        dim( GrowBox::LED );
-        dim( GrowBox::FAN1 );
-      }
+      digitalWrite( fetPin[GrowBox::FAN1], 0 );
+      digitalWrite( fetPin[GrowBox::LED],  fetState[GrowBox::LED] );
     }
-   }
-    
-  if ( millisCur - millisUpd >= INTERVAL_CALC ) {
-      logMillis += INTERVAL_CALC;
-      logCount = 0;
-      logTemp  = 0.0;
-      logHumid = 0.0;
   }
-//    if ( second( time ) == 0 && minute( time ) == 0 ) {
-//      File f = SPIFFS.open( F("/log.txt"), "a" );
-//      if ( !f ) {
-//        oled.setCursor( 0, 6 );
-//        oled.print( F("Failed to open log.txt") );
-//#ifdef COM
-//        _s.println( F("Failed to open log.txt") );
-//#endif
-//      } else {
-//        if ( logCount > 0 ) {
-//          snprintf ( buff, 60, "\"%s\",%.1f,%.1f",
-//            curTime, logTemp / logCount, humidity );
-////          f.println( buff );
-//          oled.setCursor( 0, 4 );
-//          oled.print( buff );
-//          oled.clearToEOL();
-//        }
-//        f.close();
-//      }
-//      logCount = 0;
-//      logTemp  = 0.0;
-//      logHumid = 0.0;
-//    }
-}
-
-void GrowBox::dim( uint8_t no, int8_t  v ) {
-    int l = analogRead( fetPin[no] );
-    if ( v == 0 ) {
-      if ( l > fetState[no] )
-        analogWrite( fetPin[no], ( l - 10 > fetState[no] ? l - 10 : fetState[no] ) );
-      else if ( l < fetState[no] )
-        analogWrite( fetPin[no], ( l + 10 < fetState[no] ? l + 10 : fetState[no] ) );
-    } else {
-      if ( l + v < 0 ) 
-        analogWrite( fetPin[no], 0 );
-      else if ( l + v > GrowBox::PWM_MAX )
-        analogWrite( fetPin[no], GrowBox::PWM_MAX );
-      else
-        analogWrite( fetPin[no], l + v );
-    }
 }
 
 void GrowBox::toJson( char *c, int size ) {
@@ -164,10 +103,11 @@ void GrowBox::toJson( char *c, int size ) {
 }
 
 void GrowBox::fetSet( uint8_t no, uint16_t value ) {
-  if ( no < sizeof( fetPin ) && no > 0 ) {
-    if ( value < 0 )       value = 0;
-    if ( value > GrowBox::PWM_MAX ) value = GrowBox::PWM_MAX;
-    fetState[no] = value;
+  if ( no < sizeof( fetPin ) && no >= 0 ) {
+    if ( value > 0 )
+      fetState[no] = 1;
+    else
+      fetState[no] = 0;
     analogWrite( fetPin[no], fetState[no] );
   }
 }
