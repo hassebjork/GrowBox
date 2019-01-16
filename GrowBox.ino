@@ -1,6 +1,15 @@
 /* Strings
  *   https://hackingmajenkoblog.wordpress.com/2016/02/04/the-evils-of-arduino-strings/
  * 
+ * TODO
+ * WiFiManager
+ * Logging 
+ *   Save data to server 
+ *   Save data to SPIFFS
+ *   Download data file
+ * Config
+ *   Upload file (POST
+ *   Download file (GET)
  */
 
 #include "Config.h"                         // Configuration class for local storage
@@ -85,35 +94,19 @@ bool checkDst() {
     return false;
 }
 
-/* TODO: Add limits */
-void argFloat( float &f, const char *s ) {
-  if ( server.hasArg( s ) )
-    f = atof( server.arg( s ).c_str() );
-}
-void argInt( uint8_t &f, const char *s ) {
-  if ( server.hasArg( s ) )
-    f = atoi( server.arg( s ).c_str() );
-}
-void argInt( int8_t &f, const char *s ) {
-  if ( server.hasArg( s ) )
-    f = atoi( server.arg( s ).c_str() );
-}
-
 void handleIO() {
   int t;
   for ( uint8_t i = 0; i < GrowBox::fetNo; i++ ) {
     if ( server.hasArg( GrowBox::fetName[i] ) ) {
-      t = atoi( server.arg( GrowBox::fetName[i]).c_str() );
+      t = atoi( server.arg( GrowBox::fetName[i] ).c_str() );
       growBox.fetSet( i, t );
     }
   }
-  
-  argFloat( config.tempMin,   "TEMPMIN"  );
-  argFloat( config.tempMax,   "TEMPMAX"  );
-  argInt(   config.humidMax,  "HUMIDMAX" );
-  argInt(   config.humidMin,  "HUMIDMIN" );
-  argInt(   config.tz,        "tz"       );
-  argInt(   config.dst,       "dst"      );
+  for ( uint8_t i = 0; i < Config::attrNo; i++ ) {
+    if ( server.hasArg( Config::attr[i] ) ) {
+      config.set( i, server.arg( Config::attr[i] ).c_str() );
+    }
+  }
 }
 
 void handleBoot() {
@@ -129,34 +122,39 @@ void handleBoot() {
 }
 
 void handleRoot() {
-  char temp[120];
   handleIO();
+  char temp[120];
   snprintf_P( temp, sizeof( temp ),
     PSTR("<html><head><script src='https://bjork.es/js/growbox.js?l=%d'></script></head><body></body></html>"),
     millis()
   );
+//  const char temp[] = "<html><head><script src='https://bjork.es/js/growbox.js'></script></head><body></body></html>";
   server.sendHeader( "Cache-Control", "public, max-age=86400" );
   server.sendHeader( "Connection", "close" );
   server.send ( 200, "text/html", temp );
 }
 
 void handleJSON() {
-  char temp[300];
-  char buff[200] = "";
-  
+  char temp[350];
+  char buff[250] = "";
   handleIO();
 
-  config.toJson( buff, 200 );
-  strncpy( temp, "{\"config\":", sizeof( temp ) );
+  strncpy( temp, "{\"chip\":", sizeof( temp ) );
+  itoa( ESP.getChipId(), buff, 10 );
+  strncat( temp, buff, sizeof( temp ) );
+  strncat( temp, ",\"config\":", sizeof( temp ) );
+  config.toJson( buff, sizeof( buff ) );
   strncat( temp, buff, sizeof( temp ) );
   strncat( temp, ",\"state\":", sizeof( temp ) );
-  growBox.toJson( buff, 200 );
+  growBox.toJson( buff, sizeof( buff ) );
   strncat( temp, buff, sizeof( temp ) );
   strncat( temp, "}", sizeof( temp ) );
   
   server.sendHeader( "Cache-Control", "no-cache" );
   server.sendHeader( "Connection", "close" );
   server.send ( 200, "application/json", temp );
+  
+//  DEBUG_MSG("handleJSON: %d bytes\n", strlen( temp ) );  
 }
 
 void initWifi(){
@@ -186,7 +184,7 @@ void initWifi(){
 }
 
 void setup(void){
-  config.read( "/config.json" );
+  Serial.begin(115200);
   growBox.init();
   growBox.oled.clear();
   disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
@@ -200,9 +198,9 @@ void setup(void){
 
 void loop(void){
   time_t t = now() + config.tz * SECS_PER_HOUR + ( checkDst() ? SECS_PER_HOUR : 0 );
-  if ( hour( t ) == 6 && minute( t ) == 15 && growBox.fetStatus( 0 ) == 0 )
+  if ( hour( t ) == config.ledOn.hour && minute( t ) == config.ledOn.minute )
     growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
-  if ( hour( t ) == 20 && minute( t ) == 00 && growBox.fetStatus( 0 ) > 0 )
+  if ( hour( t ) == config.ledOff.hour && minute( t ) == config.ledOff.minute )
     growBox.fetSet( GrowBox::LED, 0 );
   
   growBox.update();
