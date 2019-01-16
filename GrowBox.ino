@@ -185,7 +185,6 @@ void initWifi(){
 
 void setup(void){
   Serial.begin(115200);
-  growBox.init();
   growBox.oled.clear();
   disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
     growBox.oled.println("Station disconnected");
