@@ -18,6 +18,7 @@ Config config;
 #include "GrowBox.h"
 GrowBox growBox;
 
+// Time and sync
 #include <TimeLib.h>      // https://github.com/PaulStoffregen/Time
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -26,11 +27,15 @@ const char * headerKeys[] = { "date" };
 const size_t numberOfHeaders = 1;
 const char * _months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }; 
 
-#include <pgmspace.h>                       // PSTR & PROGMEM
+// WiFiManager
+#include <ESP8266WiFi.h>          // https://github.com/esp8266/Arduino
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager
+WiFiManager wifiManager;
 
-#include <math.h>
+//#include <pgmspace.h>                       // PSTR & PROGMEM
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
@@ -112,9 +117,8 @@ void handleIO() {
 void handleBoot() {
   growBox.oled.clear();
   growBox.oled.println( "* * * REBOOT * * *" );
-  server.sendHeader( "Location", String("/"), true );
-  server.sendHeader( "Connection", "close" );
-  server.send ( 302, "text/plain", "" );
+  server.sendHeader( "Location", "/" );
+  server.send ( 303 );
   delay( 2500 );
   WiFi.disconnect();
   growBox.oled.clear();
@@ -157,19 +161,20 @@ void handleJSON() {
 //  DEBUG_MSG("handleJSON: %d bytes\n", strlen( temp ) );  
 }
 
-void initWifi(){
-  uint8_t i = 0;
-  
-  WiFi.mode( WIFI_STA );
-  WiFi.begin( config.ssid, config.pass );
-  
-  while ( WiFi.status() != WL_CONNECTED && i++ < 10 ) {
-    delay( 500 );
-    growBox.oled.setCursor( 0, 1 );
-    growBox.oled.print( spinner[ i % sizeof( spinner ) ] );
-  }
-  
+void wifiAPMode( WiFiManager *wm ){
+  growBox.oled.clear();
   growBox.oled.setCursor( 0, 0 );
+  growBox.oled.println( F( "No network found" ) );
+  growBox.oled.print( F( "Connect to AP:\nhttp://" ) );
+  growBox.oled.println( WiFi.softAPIP() ); 
+  growBox.oled.print( wm->getConfigPortalSSID() ); 
+  growBox.oled.println( F( ".local" ) );
+}
+
+void initWifi(){
+  growBox.oled.print( F( "WiFi: Connecting" ) );
+  wifiManager.autoConnect( config.name );
+  
   if ( WiFi.status() == WL_CONNECTED ) {
     if ( !MDNS.begin( config.name ) )
       delay( 500 );
@@ -179,20 +184,23 @@ void initWifi(){
     httpUpdater.setup( &server );
     server.begin();
     MDNS.addService("http", "tcp", 80);
+    setSyncInterval( 24*60*60 );    // Daily
+    setSyncProvider( syncHTTP );
   }
   growBox.oled.clear();
 }
 
 void setup(void){
   Serial.begin(115200);
+  config.read();
   growBox.oled.clear();
-  disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
-    growBox.oled.println("Station disconnected");
-    initWifi();
-  });
+  wifiManager.setTimeout( 300 );
+  wifiManager.setAPCallback( wifiAPMode );
+//  disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
+//    growBox.oled.println("Station disconnected");
+//    initWifi();
+//  });
   initWifi();
-  setSyncInterval( 24*60*60 );    // Daily
-  setSyncProvider( syncHTTP );
 }
 
 void loop(void){
@@ -204,12 +212,6 @@ void loop(void){
   
   growBox.update();
   
-  if ( WiFi.status() == WL_CONNECTED ) {
-    server.handleClient();
-  } else {
-    initWifi();
-  }
-  
   growBox.oled.setCursor( 0, 0 );
   growBox.oled.printf( "%s%*s%02d:%02d:%02d ", 
     config.name, 13 - strlen( config.name ), "", // OLED width 21.5 char
@@ -218,17 +220,18 @@ void loop(void){
   growBox.oled.setCursor( 0, 1 );
   if ( WiFi.status() == WL_CONNECTED ) {
     growBox.oled.print( WiFi.localIP() );
+    server.handleClient();
   } else {
-    growBox.oled.println( "No WiFi " );
+    growBox.oled.println( F( "No WiFi ") );
+    wifiManager.setTimeout( 10 );
+    initWifi();
   }
   
   growBox.oled.setCursor( 0, 2 );
   growBox.oled.printf( "% 7.1fC% 7.1f%% ", growBox.temperature, growBox.humidity );
   
   growBox.oled.setCursor( 0, 3 );
-//  growBox.oled.printf( "Led:% 4d   Fan:% 4d \n", growBox.fetStatus( 0 ), growBox.fetStatus( 1 ) );
 
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
   yield();
 }
-

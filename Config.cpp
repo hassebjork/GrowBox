@@ -1,10 +1,12 @@
 #include "Config.h"
 
 const char *Config::attr[] = { 
-    "tempMax", "humidMax", "ssid", "pass", "tz", "dst", "ledOn", "ledOff" 
+    "tempMax", "humidMax", "tz", "dst", "ledOn", "ledOff" 
 };
 
 Config::Config() {
+  set( LEDON,  "2400" );
+  set( LEDOFF, "2400" );
   read();
 }
   
@@ -28,14 +30,6 @@ void Config::set( uint8_t d, const char *c ) {
         humidMax = i;
       }
       break;
-    case SSID:
-      strlcpy( ssid, c, sizeof( ssid ) );
-      saved = false;
-      break;
-    case PASS:
-      strlcpy( pass, c, sizeof( pass ) );
-      saved = false;
-      break;
     case TZ:
       i = atoi( c );
       if ( i > -13 && i < 13 ) {
@@ -58,10 +52,11 @@ void Config::set( uint8_t d, const char *c ) {
         ledOn.hour    = i / 100;
         ledOn.minute  = i % 100;
         saved = false;
-     } else {
+      } else {
         ledOn.hour    = 25;
         ledOn.minute  = 00;
-     }
+      }
+      DEBUG_MSG( "LEDON: %s %d=%d:%d\n", c, i, ledOn.hour, ledOn.minute );
       break;
     case LEDOFF:
       i = atoi( c );
@@ -69,10 +64,11 @@ void Config::set( uint8_t d, const char *c ) {
         ledOff.hour    = i / 100;
         ledOff.minute  = i % 100;
         saved = false;
-     } else {
+      } else {
         ledOff.hour    = 25;
         ledOff.minute  = 00;
       }
+      DEBUG_MSG( "LEDOFF: %s %d=%d:%d\n", c, i, ledOff.hour, ledOff.minute );
       break;
     default:
       saved = true;
@@ -95,11 +91,7 @@ void Config::toJson( char *c, int size ) {
   strncat( c, ",\"dst\":", size ); 
   itoa( dst, buff, 10 );
   strncat( c, buff, size );
-  strncat( c, ",\"wifi\":{\"ssid\":\"", size ); 
-  strncat( c, ssid, size ); 
-  strncat( c, "\",\"pass\":\"", size ); 
-  strncat( c, pass, size );
-  strncat( c, "\"},\"ledOn\":", size );
+  strncat( c, ",\"ledOn\":", size );
   itoa( (uint16_t) (ledOn.hour * 100)  + ledOn.minute,  buff, 10 );
   strncat( c, buff, size );
   strncat( c, ",\"ledOff\":", size ); 
@@ -121,15 +113,16 @@ void Config::read() {
       Serial.println( String("Default configuration: ") );
     JsonObject root = doc.as<JsonObject>();
     int i;
+    char c[6];
     strlcpy( name, root["name"] | "DefName", sizeof( name ) );
     set( HUMIDMAX, root["humidMax"] | "92" );
     set( TEMPMAX,  root["tempMax"]  | "28.0" );
     set( TZ,       root["tz"]       | "1" );
     set( DST,      root["dst"]      | "1" );
-    set( LEDON,    root["ledOn"]    | "2560" );
-    set( LEDOFF,   root["ledOff"]   | "2560" );
-    set( SSID,     root["wifi"]["ssid"] | "" );
-    set( PASS,     root["wifi"]["pass"] | "" );
+//    strlcpy( c, root["ledOn" ], 5 );
+//    set( LEDON,    c );
+//    c = root["ledOff"];
+//    set( LEDOFF,   c );
   }
   f.close();
   saved = true;
