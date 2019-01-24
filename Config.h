@@ -41,8 +41,8 @@ public:
   char       name[10] = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9
   uint8_t    humidMax = 92;       // Humidity High
   float      tempMax  = 28.0;     // Temperature High
-  uint8_t    tz       = 1;        // TimeZone hours
-  uint8_t    dst      = 1;        // Daylight Saving Time
+  int8_t     tz       = 1;        // TimeZone hours
+  bool       dst      = true;     // Daylight Saving Time
   bool       saved    = true;     // Configuration data saved true/false
   
   Alarm      ledOn;       //
@@ -51,6 +51,8 @@ public:
   Config();
   void set( uint8_t d, const char *c );
   bool setAlarm( Alarm &a, const char *c );
+  bool setBool( bool &b, const char *c );
+
   void toJson( char *c, int size );
   void load();
   void save();

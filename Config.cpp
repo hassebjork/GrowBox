@@ -15,46 +15,59 @@ Config::Config() {
 }
   
 void Config::set( uint8_t d, const char *c ) {
-  uint8_t i;
   DEBUG_MSG("Config::set( %d, '%s' )\n", d, c );  
   
   switch( d ) {
-    case TEMPMAX:
-      float f;
-      f = atof( c );
+    
+    case TEMPMAX: {
+      float f = atof( c );
       if ( f > 0.0 && f < 50.0 ) {
         saved = ( f == tempMax );
         tempMax = f;
       }
-      break;
-    case HUMIDMAX:
-      i = atoi( c );
+    }
+    break;
+    
+    case HUMIDMAX: {
+      uint8_t i = (uint8_t) atoi( c );
       if ( i >= 0 && i <= 100 ) {
         saved = ( i == humidMax );
         humidMax = i;
       }
-      break;
-    case TZ:
-      i = atoi( c );
+    }
+    break;
+    
+    case TZ: {
+      int8_t i = atoi( c );
       if ( i > -13 && i < 13 ) {
         saved = ( i == tz );
         tz = i;
       }
-      break;
+    }
+    break;
+    
     case DST:
-      i = atoi( c );
-      if ( i == 0 || i == 1 ) {
-        saved = ( i == dst );
-        dst = i;
-      }
-      break;
+      saved = setBool( dst, c );
+    break;
+    
     case LEDON:
       saved = setAlarm( ledOn, c );
-      break;
+    break;
+    
     case LEDOFF:
       saved = setAlarm( ledOff, c );
-      break;
+    break;
   }
+}
+
+bool Config::setBool( bool &b, const char *c ) {
+  uint8_t i = atoi( c );
+  bool saved;
+  if ( i == 0 || i == 1 ) {
+    saved = ( i == b );
+    b = i;
+  }
+  return saved;
 }
 
 bool Config::setAlarm( Alarm &a, const char *c ) {
