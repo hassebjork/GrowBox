@@ -206,18 +206,21 @@ void setup(void){
 }
 
 void loop(void){
-  time_t t = now() + config.tz * SECS_PER_HOUR + ( checkDst() ? SECS_PER_HOUR : 0 );
-  if ( hour( t ) == config.ledOn.hour && minute( t ) == config.ledOn.minute )
-    growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
-  if ( hour( t ) == config.ledOff.hour && minute( t ) == config.ledOff.minute )
-    growBox.fetSet( GrowBox::LED, 0 );
+  config.time = now() + config.tz * SECS_PER_HOUR + ( checkDst() ? SECS_PER_HOUR : 0 );
+
+  if ( second( config.time ) == 0 ) {
+    if ( hour( config.time ) == config.ledOn.hour && minute( config.time ) == config.ledOn.minute )
+      growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
+    if ( hour( config.time ) == config.ledOff.hour && minute( config.time ) == config.ledOff.minute )
+      growBox.fetSet( GrowBox::LED, 0 );
+  }
   
   growBox.update();
   
   growBox.oled.setCursor( 0, 0 );
   growBox.oled.printf( "%s%*s%02d:%02d:%02d ", 
     config.name, 13 - strlen( config.name ), "", // OLED width 21.5 char
-    hour( t ), minute( t ), second( t ) );
+    hour( config.time ), minute( config.time ), second( config.time ) );
   
   growBox.oled.setCursor( 0, 1 );
   if ( WiFi.status() == WL_CONNECTED ) {
