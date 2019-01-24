@@ -4,21 +4,27 @@ const char *Config::attr[] = {
     "tempMax", "humidMax", "tz", "dst", "ledOn", "ledOff" 
 };
 
+const char Config::config_file[] PROGMEM = "/growbox.json";
+
 Config::Config() {
+  ledOn.hour    = 26;
+  ledOn.minute  = 60;
+  ledOff.hour   = 26;
+  ledOff.minute = 60;
   read();
 }
   
 void Config::set( uint8_t d, const char *c ) {
-  int i;
-  char buff[65];
+  uint8_t i;
   DEBUG_MSG("Config::set( %d, '%s' )\n", d, c );  
   
   switch( d ) {
     case TEMPMAX:
-      i = atof( c );
-      if ( i > 0.0 && i < 50.0 ) {
-        saved = ( i == tempMax );
-        tempMax = i;
+      float f;
+      f = atof( c );
+      if ( f > 0.0 && f < 50.0 ) {
+        saved = ( f == tempMax );
+        tempMax = f;
       }
       break;
     case HUMIDMAX:
@@ -33,7 +39,6 @@ void Config::set( uint8_t d, const char *c ) {
       if ( i > -13 && i < 13 ) {
         saved = ( i == tz );
         tz = i;
-        saved = false;
       }
       break;
     case DST:
@@ -41,36 +46,31 @@ void Config::set( uint8_t d, const char *c ) {
       if ( i == 0 || i == 1 ) {
         saved = ( i == dst );
         dst = i;
-        saved = false;
       }
       break;
     case LEDON:
-      i = atoi( c );
-      if ( i >= 0 && i <= 2359 ) {
-        ledOn.hour    = i / 100;
-        ledOn.minute  = i % 100;
-        saved = false;
-      } else {
-        ledOn.hour    = 25;
-        ledOn.minute  = 00;
-      }
-      DEBUG_MSG( "LEDON: %s %d=%d:%d\n", c, i, ledOn.hour, ledOn.minute );
+      saved = setAlarm( ledOn, c );
       break;
     case LEDOFF:
-      i = atoi( c );
-      if ( i >= 0 && i <= 2359 ) {
-        ledOff.hour    = i / 100;
-        ledOff.minute  = i % 100;
-        saved = false;
-      } else {
-        ledOff.hour    = 25;
-        ledOff.minute  = 00;
-      }
-      DEBUG_MSG( "LEDOFF: %s %d=%d:%d\n", c, i, ledOff.hour, ledOff.minute );
+      saved = setAlarm( ledOff, c );
       break;
     default:
       saved = true;
   }
+}
+
+bool Config::setAlarm( Alarm &a, const char *c ) {
+  uint8_t hour   = a.hour;
+  uint8_t minute = a.minute;
+  int    i = atoi( c );
+  if ( i >= 0 && i <= 2359 ) {
+    a.hour    = i / 100;
+    a.minute  = i % 100;
+  } else {
+    a.hour    = 25;
+    a.minute  = 00;
+  }
+  return ( hour == a.hour && minute == a.minute );
 }
   
 void Config::toJson( char *c, int size ) {
@@ -101,10 +101,8 @@ void Config::toJson( char *c, int size ) {
   
 void Config::read() {
   SPIFFS.begin();
-  File f = SPIFFS.open( FILE_CONFIG, "r" );
-  if ( !f ) {
-    Serial.println( String( "Error opening " ) + String( FILE_CONFIG ) );
-  } else {
+  File f = SPIFFS.open( FPSTR( config_file ), "r" );
+  if ( f ) {
     char c[6];
     StaticJsonDocument<512> doc;
     DeserializationError error = deserializeJson( doc, f );
@@ -122,13 +120,12 @@ void Config::read() {
     set( LEDOFF,   c );
   }
   f.close();
-  saved = true;
 }
   
 void Config::write() {
   SPIFFS.begin();
-  SPIFFS.rename( FILE_CONFIG, String( FILE_CONFIG ) + String( ".old" ) );
-  File file = SPIFFS.open( FILE_CONFIG, "W" );
+  SPIFFS.rename( FPSTR( config_file ), String( FPSTR( config_file ) ) + String( ".old" ) );
+  File file = SPIFFS.open( FPSTR( config_file ), "W" );
   if ( !file ) {
     Serial.println( F( "Failed to create file" ) );
     return;

@@ -19,8 +19,7 @@
 #include "FS.h"           // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
 #include <ArduinoJson.h>  // https://arduinojson.org/
                           // https://arduinojson.org/assistant/
-
-#define FILE_CONFIG "/growbox.json"
+#include <pgmspace.h>     // PROGMEM functions
 
 typedef struct {
   uint8_t hour;
@@ -34,24 +33,26 @@ typedef struct {
 class Config {
 public:
   static const char *attr[];
+  static const char config_file[];
   enum ATTR {
     TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF, attrNo
   };
-
-  char       name[10];    // Controller name
-  uint8_t    humidMax;    // Humidity High
-  float      tempMax;     // Temperature High
-  uint8_t    tz;          // TimeZone hours
-  uint8_t    dst;         // Daylight Saving Time
-  bool       saved;       // Configuration data saved true/false
+                                  // Controller name
+  char       name[10] = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9
+  uint8_t    humidMax = 92;       // Humidity High
+  float      tempMax  = 28.0;     // Temperature High
+  uint8_t    tz       = 1;        // TimeZone hours
+  uint8_t    dst      = 1;        // Daylight Saving Time
+  bool       saved    = true;     // Configuration data saved true/false
   
   Alarm      ledOn;       //
   Alarm      ledOff;      //
 
   Config();
   void set( uint8_t d, const char *c );
+  bool setAlarm( Alarm &a, const char *c );
   void toJson( char *c, int size );
   void read();
-  void write();  
+  void write();
 };
 #endif
