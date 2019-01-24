@@ -52,7 +52,7 @@ public:
   void set( uint8_t d, const char *c );
   bool setAlarm( Alarm &a, const char *c );
   void toJson( char *c, int size );
-  void read();
-  void write();
+  void load();
+  void save();
 };
 #endif

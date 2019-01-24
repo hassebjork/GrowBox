@@ -11,7 +11,7 @@ Config::Config() {
   ledOn.minute  = 60;
   ledOff.hour   = 26;
   ledOff.minute = 60;
-  read();
+  load();
 }
   
 void Config::set( uint8_t d, const char *c ) {
@@ -54,8 +54,6 @@ void Config::set( uint8_t d, const char *c ) {
     case LEDOFF:
       saved = setAlarm( ledOff, c );
       break;
-    default:
-      saved = true;
   }
 }
 
@@ -99,15 +97,20 @@ void Config::toJson( char *c, int size ) {
 //  DEBUG_MSG("Config::toJson: %d bytes\n", strlen( c ) );  
 }
   
-void Config::read() {
+void Config::load() {
+  DEBUG_MSG("Config::load()\n" );  
   SPIFFS.begin();
   File f = SPIFFS.open( FPSTR( config_file ), "r" );
-  if ( f ) {
-    char c[6];
-    StaticJsonDocument<512> doc;
-    DeserializationError error = deserializeJson( doc, f );
-    if (error)
-      Serial.println( String("Default configuration: ") );
+  if ( !f ) {
+    DEBUG_MSG("Config::load error: No file!\n" );  
+    return;
+  }
+  char c[6];
+  StaticJsonDocument<512> doc;
+  DeserializationError error = deserializeJson( doc, f );
+  if (error) {
+    DEBUG_MSG("Config::load error: Deserialization failed!\n" );  
+  } else {
     JsonObject root = doc.as<JsonObject>();
     strlcpy( name, root["name"] | "DefName", sizeof( name ) );
     set( HUMIDMAX, root["humidMax"] | "92" );
@@ -122,12 +125,17 @@ void Config::read() {
   f.close();
 }
   
-void Config::write() {
+void Config::save() {
+  if ( saved )
+    return;
   SPIFFS.begin();
-  SPIFFS.rename( FPSTR( config_file ), String( FPSTR( config_file ) ) + String( ".old" ) );
-  File file = SPIFFS.open( FPSTR( config_file ), "W" );
+  if ( SPIFFS.exists( FPSTR( config_file ) ) ) {
+    if ( !SPIFFS.rename( FPSTR( config_file ), F( "/growbox.old" ) ) )
+      DEBUG_MSG( "Config::save error: Faild to rename file!\n" );  
+  }
+  File file = SPIFFS.open( FPSTR( config_file ), "w" );
   if ( !file ) {
-    Serial.println( F( "Failed to create file" ) );
+    DEBUG_MSG( "Config::save error: Faild to open file!\n" );  
     return;
   }
   char temp[200];
@@ -135,4 +143,5 @@ void Config::write() {
   file.print( temp );
   file.close();
   saved = true;
+  DEBUG_MSG( "Config::save()\n" );  
 }

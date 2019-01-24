@@ -2,7 +2,6 @@
  *   https://hackingmajenkoblog.wordpress.com/2016/02/04/the-evils-of-arduino-strings/
  * 
  * TODO
- * WiFiManager
  * Logging 
  *   Save data to server 
  *   Save data to SPIFFS
@@ -11,6 +10,8 @@
  *   Upload file (POST
  *   Download file (GET)
  */
+
+#include <pgmspace.h>     // PROGMEM functions
 
 #include "Config.h"                         // Configuration class for local storage
 Config config;
@@ -112,6 +113,7 @@ void handleIO() {
       config.set( i, server.arg( Config::attr[i] ).c_str() );
     }
   }
+  config.save();
 }
 
 void handleBoot() {
@@ -192,7 +194,7 @@ void initWifi(){
 
 void setup(void){
   Serial.begin(115200);
-  config.read();
+  config.load();
   growBox.oled.clear();
   wifiManager.setTimeout( 300 );
   wifiManager.setAPCallback( wifiAPMode );
