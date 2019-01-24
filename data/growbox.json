@@ -1,1 +1,1 @@
-{"name":"GrowBox1","wifi":{"ssid":"SSID","pass":"PASSWORD"},"humidMax":92,"tempMax":26.0,"tz":1,"dst":1}
+{"name":"GrowBox1","ledOn":615,"ledOff":2000,"humidMax":90,"tempMax":26.0,"tz":1,"dst":1}

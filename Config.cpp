@@ -5,8 +5,6 @@ const char *Config::attr[] = {
 };
 
 Config::Config() {
-  set( LEDON,  "2400" );
-  set( LEDOFF, "2400" );
   read();
 }
   
@@ -107,22 +105,21 @@ void Config::read() {
   if ( !f ) {
     Serial.println( String( "Error opening " ) + String( FILE_CONFIG ) );
   } else {
+    char c[6];
     StaticJsonDocument<512> doc;
     DeserializationError error = deserializeJson( doc, f );
     if (error)
       Serial.println( String("Default configuration: ") );
     JsonObject root = doc.as<JsonObject>();
-    int i;
-    char c[6];
     strlcpy( name, root["name"] | "DefName", sizeof( name ) );
     set( HUMIDMAX, root["humidMax"] | "92" );
     set( TEMPMAX,  root["tempMax"]  | "28.0" );
     set( TZ,       root["tz"]       | "1" );
     set( DST,      root["dst"]      | "1" );
-//    strlcpy( c, root["ledOn" ], 5 );
-//    set( LEDON,    c );
-//    c = root["ledOff"];
-//    set( LEDOFF,   c );
+    itoa( root["ledOn"  ] | 2560, c, 10 );
+    set( LEDON,    c );
+    itoa( root["ledOff" ] | 2560, c, 10 );
+    set( LEDOFF,   c );
   }
   f.close();
   saved = true;
