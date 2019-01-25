@@ -75,16 +75,13 @@ time_t syncHTTP() {
       tm.Second = ( str[23] - '0' ) * 10 + ( str[24] - '0' );
     }
     http.end();
-  } else {
-    tm.Year   = 2000;
-    tm.Month  = 1;
-    tm.Day    = 1;
-    tm.Hour   = 0;
-    tm.Minute = 0;
-    tm.Second = 0;
+    return makeTime( tm );
   }
-  return makeTime( tm );
+  if ( now() < 1000 )
+    setTime( 0, 0, 0, 1, 1, 2000 );
+  return now();
 }
+
 bool checkDst() {
   if ( !config.dst ) 
     return false;
