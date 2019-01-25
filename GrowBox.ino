@@ -45,6 +45,7 @@ extern "C" {
 }
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
+WiFiEventHandler gotIPEventHandler;         // https://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/generic-examples.html#event-driven-methods
 WiFiEventHandler disconnectedEventHandler;  // https://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/generic-examples.html#event-driven-methods
 
 const char spinner[] = ".oOo";
@@ -163,29 +164,24 @@ void wifiAPMode( WiFiManager *wm ){
   growBox.oled.clear();
   growBox.oled.setCursor( 0, 0 );
   growBox.oled.println( F( "No network found" ) );
-  growBox.oled.print( F( "Connect to AP:\nhttp://" ) );
+  growBox.oled.print( F( "Connect to AP:\n" ) );
+  growBox.oled.println( wm->getConfigPortalSSID() ); 
+  growBox.oled.print( F( "http://" ) );
   growBox.oled.println( WiFi.softAPIP() ); 
-  growBox.oled.print( wm->getConfigPortalSSID() ); 
-  growBox.oled.println( F( ".local" ) );
 }
 
 void initWifi(){
+  growBox.oled.setCursor( 0, 1 );
   growBox.oled.print( F( "WiFi: Connecting" ) );
+  growBox.oled.clearToEOL();
   wifiManager.autoConnect( config.name );
   
   if ( WiFi.status() == WL_CONNECTED ) {
     if ( !MDNS.begin( config.name ) )
       delay( 500 );
-    server.on( "/", handleRoot );
-    server.on( "/js", handleJSON );
-    server.on( "/boot", handleBoot );
-    httpUpdater.setup( &server );
-    server.begin();
     MDNS.addService("http", "tcp", 80);
-    setSyncInterval( 24*60*60 );    // Daily
-    setSyncProvider( syncHTTP );
+    growBox.oled.clear();
   }
-  growBox.oled.clear();
 }
 
 void setup(void){
@@ -194,11 +190,27 @@ void setup(void){
   growBox.oled.clear();
   wifiManager.setTimeout( 300 );
   wifiManager.setAPCallback( wifiAPMode );
-//  disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
-//    growBox.oled.println("Station disconnected");
-//    initWifi();
-//  });
+  disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
+    growBox.oled.setCursor( 0, 1 );
+    growBox.oled.print( F("Disconnected") );
+    growBox.oled.clearToEOL();
+  });
+  gotIPEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event) {
+    growBox.oled.setCursor( 0, 1 );
+    growBox.oled.print( WiFi.localIP() );
+    growBox.oled.clearToEOL();
+    server.begin();
+  });
+  server.on( "/", handleRoot );
+  server.on( "/js", handleJSON );
+  server.on( "/boot", handleBoot );
+  httpUpdater.setup( &server );
   initWifi();
+  
+  setSyncInterval( 24*60*60 );    // Daily
+  if ( WiFi.status() == WL_CONNECTED ) {
+    setSyncProvider( syncHTTP );
+  }
 }
 
 void loop(void){
