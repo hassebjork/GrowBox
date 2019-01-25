@@ -35,7 +35,7 @@ public:
   static const char *attr[];
   static const char config_file[];
   enum ATTR {
-    TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF, attrNo
+    NAME, TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF, attrNo
   };
                                   // Controller name
   char       name[10] = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9

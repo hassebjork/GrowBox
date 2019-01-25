@@ -1,7 +1,8 @@
 #include "Config.h"
 
 const char *Config::attr[] = { 
-    "tempMax", "humidMax", "tz", "dst", "ledOn", "ledOff" 
+    "name", "tempMax", "humidMax", "tz", "dst",
+    "ledOn", "ledOff" 
 };
 
 const char Config::config_file[] PROGMEM = "/growbox.json";
@@ -18,6 +19,12 @@ void Config::set( uint8_t d, const char *c ) {
   DEBUG_MSG("Config::set( %d, '%s' )\n", d, c );  
   
   switch( d ) {
+    
+    case NAME: {
+      saved = ( strcmp( name, c ) == 0 );
+      strlcpy( name, c, sizeof( name ) );
+    }
+    break;
     
     case TEMPMAX: {
       float f = atof( c );
