@@ -116,11 +116,10 @@ void handleIO() {
 void handleBoot() {
   growBox.oled.clear();
   growBox.oled.println( "* * * REBOOT * * *" );
-  server.sendHeader( "Location", "/" );
-  server.send ( 303 );
-  delay( 2500 );
+  server.send ( 200, "text/html", "<html><head><meta http-equiv='refresh' content='5;url=/'/></head></html>" );
+  DEBUG_MSG("handleBoot: Rebooting\n" );  
+  delay( 500 );
   WiFi.disconnect();
-  growBox.oled.clear();
   ESP.restart();
 }
 
