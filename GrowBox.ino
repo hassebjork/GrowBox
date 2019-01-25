@@ -6,9 +6,6 @@
  *   Save data to server 
  *   Save data to SPIFFS
  *   Download data file
- * Config
- *   Upload file (POST
- *   Download file (GET)
  */
 
 #include <pgmspace.h>     // PROGMEM functions
@@ -114,11 +111,44 @@ void handleIO() {
   config.save();
 }
 
+void handleUpload() {
+  File file;
+  HTTPUpload& upload = server.upload();
+  if ( upload.status == UPLOAD_FILE_START ) {
+    String filename = upload.filename;
+    if ( !filename.startsWith( "/" ) )
+      filename = "/" + filename;
+    file = SPIFFS.open( filename, "w" );
+  } else if ( upload.status == UPLOAD_FILE_WRITE ) {
+    if ( file )
+      file.write( upload.buf, upload.currentSize ); // Write the received bytes to the file
+  } else if ( upload.status == UPLOAD_FILE_END ) {
+    if ( file ) {                                   // If the file was successfully created
+      file.close();                                 // Close the file again
+      server.sendHeader( "Location", "/" );         // Redirect the client to the success page
+      server.send( 303 );
+    } else {
+      server.send( 500, "text/plain", F( "500: couldn't create file" ) );
+    }
+  }  
+}
+
+void handleDownload() {
+  SPIFFS.begin();
+  File file;
+  if ( server.hasArg( "file" ) )
+    file = SPIFFS.open( server.arg( "file" ), "r" );
+  if ( !file )
+    file = SPIFFS.open( Config::config_file, "r" );
+  size_t sent = server.streamFile( file, "text/plain" );
+  file.close();
+}
+
 void handleBoot() {
   growBox.oled.clear();
-  growBox.oled.println( "* * * REBOOT * * *" );
-  server.send ( 200, "text/html", "<html><head><meta http-equiv='refresh' content='5;url=/'/></head></html>" );
-  DEBUG_MSG("handleBoot: Rebooting\n" );  
+  growBox.oled.println( F( "* * * REBOOT * * *" ) );
+  server.send ( 200, "text/html", F( "<html><head><meta http-equiv='refresh' content='5;url=/'/></head></html>" ) );
+  DEBUG_MSG( "handleBoot: Rebooting\n" );  
   delay( 500 );
   WiFi.disconnect();
   ESP.restart();
@@ -131,10 +161,11 @@ void handleRoot() {
     PSTR("<html><head><script src='https://bjork.es/js/growbox.js?l=%d'></script></head><body></body></html>"),
     millis()
   );
-//  const char temp[] = "<html><head><script src='https://bjork.es/js/growbox.js'></script></head><body></body></html>";
+
   server.sendHeader( "Cache-Control", "public, max-age=86400" );
   server.sendHeader( "Connection", "close" );
   server.send ( 200, "text/html", temp );
+//  server.send ( 200, "text/html", F("<html><head><script src='https://bjork.es/js/growbox.js'></script></head><body></body></html>") );
 }
 
 void handleJSON() {
@@ -204,6 +235,8 @@ void setup(void){
   server.on( "/", handleRoot );
   server.on( "/js", handleJSON );
   server.on( "/boot", handleBoot );
+  server.on( "/dl", handleDownload );
+  server.on( "/ul", handleUpload );
   httpUpdater.setup( &server );
   initWifi();
   
