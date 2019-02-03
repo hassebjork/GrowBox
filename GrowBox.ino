@@ -8,9 +8,11 @@
  *   Download data file
  */
 
-#include <pgmspace.h>     // PROGMEM functions
+#include <pgmspace.h>           // PROGMEM functions
+#include <string.h>             // strncat etc
+#include <pgmspace.h>           // PSTR & PROGMEM
 
-#include "Config.h"                         // Configuration class for local storage
+#include "Config.h"             // Configuration class for local storage
 Config config;
 
 #include "GrowBox.h"
@@ -32,7 +34,6 @@ const char * _months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug
 #include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager
 WiFiManager wifiManager;
 
-//#include <pgmspace.h>                       // PSTR & PROGMEM
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -256,27 +257,33 @@ void loop(void){
       growBox.fetSet( GrowBox::LED, 0 );
   }
   
-  growBox.update();
-  
-  growBox.oled.setCursor( 0, 0 );
-  growBox.oled.printf( "%s%*s%02d:%02d:%02d ", 
-    config.name, 13 - strlen( config.name ), "", // OLED width 21.5 char
-    hour( config.time ), minute( config.time ), second( config.time ) );
-  
-  growBox.oled.setCursor( 0, 1 );
-  if ( WiFi.status() == WL_CONNECTED ) {
-    growBox.oled.print( WiFi.localIP() );
-    server.handleClient();
-  } else {
-    growBox.oled.println( F( "No WiFi ") );
-    wifiManager.setTimeout( 10 );
-    initWifi();
+  if ( millis() - config.updMillis >= config.updateTime ) {
+    config.updMillis += config.updateTime;
+    growBox.update();
+    
+    // Update display
+    growBox.oled.setCursor( 0, 0 );
+    growBox.oled.printf( "%s%*s%02d:%02d:%02d ", 
+      config.name, 13 - strlen( config.name ), "", // OLED width 21.5 char
+      hour( config.time ), minute( config.time ), second( config.time ) );
+    
+    growBox.oled.setCursor( 0, 1 );
+    if ( WiFi.status() == WL_CONNECTED ) {
+      growBox.oled.print( WiFi.localIP() );
+      server.handleClient();
+    } else {
+      growBox.oled.print( F( "No WiFi") );
+      growBox.oled.clearToEOL();
+      wifiManager.setTimeout( 10 );
+      initWifi();
+    }
+    growBox.oled.setCursor( 0, 2 );
+    growBox.oled.printf( "% 7.1fC% 7.1f%% ", growBox.temperature, growBox.humidity );
+    growBox.oled.setCursor( 0, 3 );
   }
-  
-  growBox.oled.setCursor( 0, 2 );
-  growBox.oled.printf( "% 7.1fC% 7.1f%% ", growBox.temperature, growBox.humidity );
-  
-  growBox.oled.setCursor( 0, 3 );
+  if ( config.logTime > 0 && millis() - config.logMillis >= config.logTime ) {
+    growBox.logRecord();
+  }
 
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
   yield();

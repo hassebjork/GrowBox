@@ -2,7 +2,7 @@
 
 const char *Config::attr[] = { 
     "name", "tempMax", "humidMax", "tz", "dst",
-    "ledOn", "ledOff" 
+    "ledOn", "ledOff", "logTime", "updateTime"
 };
 
 const char Config::config_file[] PROGMEM = "/growbox.json";
@@ -64,6 +64,25 @@ void Config::set( uint8_t d, const char *c ) {
     case LEDOFF:
       saved = setAlarm( ledOff, c );
     break;
+    
+    case LOGTIME: {     // Set in seconds
+      unsigned long i = atoi( c ) * 1000;
+      if ( i >= 0 ) {
+        saved = ( i == logTime );
+        logTime = i;
+      }
+    }
+    break;
+    
+    case UPDATETIME: {  // Set in seconds
+      unsigned long i = atoi( c ) * 1000;
+      if ( i > 0 ) {
+        saved = ( i == updateTime );
+        updateTime = i;
+      }
+    }
+    break;
+    
   }
 }
 
@@ -113,6 +132,12 @@ void Config::toJson( char *c, int size ) {
   strncat( c, ",\"ledOff\":", size ); 
   itoa( (uint16_t) (ledOff.hour * 100) + ledOff.minute, buff, 10 );
   strncat( c, buff, size );
+  strncat( c, ",\"logTime\":", size );        // in seconds
+  itoa( (int)( logTime / 1000 ), buff, 10 );
+  strncat( c, buff, size ); 
+  strncat( c, ",\"updateTime\":", size );     // in seconds 
+  itoa( (int)( updateTime / 1000 ), buff, 10 );
+  strncat( c, buff, size ); 
   strncat( c, "}", size );
 //  DEBUG_MSG("Config::toJson: %d bytes\n", strlen( c ) );  
 }
@@ -132,11 +157,13 @@ void Config::load() {
     DEBUG_MSG("Config::load error: Deserialization failed!\n" );  
   } else {
     JsonObject root = doc.as<JsonObject>();
-    strlcpy( name, root["name"] | "DefName", sizeof( name ) );
-    set( HUMIDMAX, root["humidMax"] | "92" );
-    set( TEMPMAX,  root["tempMax"]  | "28.0" );
-    set( TZ,       root["tz"]       | "1" );
-    set( DST,      root["dst"]      | "1" );
+    strlcpy( name,    root["name"]       | "DefName", sizeof( name ) );
+    set( HUMIDMAX,    root["humidMax"]   | "92" );
+    set( TEMPMAX,     root["tempMax"]    | "28.0" );
+    set( TZ,          root["tz"]         | "1" );
+    set( DST,         root["dst"]        | "1" );
+    set( LOGTIME,     root["logTime"]    | "0" );
+    set( UPDATETIME,  root["updateTime"] | "1" );
     itoa( root["ledOn"  ] | 2560, c, 10 );
     set( LEDON,    c );
     itoa( root["ledOff" ] | 2560, c, 10 );

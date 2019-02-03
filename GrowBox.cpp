@@ -41,40 +41,60 @@ GrowBox::GrowBox() {
 }
 
 void GrowBox::update() {
-  unsigned long millisCur = millis();
+  float t, h;
+  int fan, led;
   
-  if ( millisCur - millisUpd >= INTERVAL_UPD ) {
-    millisUpd += INTERVAL_UPD;
-    
-    float t, h;
-    int fan, led;
-    
-    if ( dht12get( t, h ) == 0 ) {
-      temperature = t * 0.4 + temperature * 0.6;
-      humidity    = h * 0.4 + humidity    * 0.6;
-    }
+  if ( dht12get( t, h ) == 0 ) {
+    temperature = t * 0.4 + temperature * 0.6;
+    humidity    = h * 0.4 + humidity    * 0.6;
 
-    
-    // Temp max + 2C
-    if ( temperature > config.tempMax + 2.0 ) {
-      setValue( FAN1, PWM_MAX );
-      dim( LED, -1 );
+    // Update log data
+    logTemp    += t;
+    logHumid   += h;
+    if ( t > maxTemp  ) maxTemp  = t;
+    if ( t < minTemp  ) minTemp  = t;
+    if ( h > maxHumid ) maxHumid = t;
+    if ( h < minHumid ) minHumid = t;
+    logCount++;
+  }
+  
+  // Temp max + 2C
+  if ( temperature > config.tempMax + 2.0 ) {
+    setValue( FAN1, PWM_MAX );
+    dim( LED, -1 );
 
-    // Temp Max
-    } else if ( temperature > config.tempMax ) {
-      dim( LED );
+  // Temp Max
+  } else if ( temperature > config.tempMax ) {
+    dim( LED );
+    dim( FAN1, 1 );
+
+  // Normal temp
+  } else {
+    if ( humidity > config.humidMax ) {
       dim( FAN1, 1 );
-
-    // Normal temp
-    } else {
-      if ( humidity > config.humidMax ) {
-        dim( FAN1, 1 );
-    } else {
-        dim( LED );
-        dim( FAN1 );
-      }
+  } else {
+      dim( LED );
+      dim( FAN1 );
     }
   }
+}
+
+void GrowBox::logRecord() {
+  if ( logCount > 0 ) {
+    logTemp  = logTemp  / logCount;
+    logHumid = logHumid / logCount;
+
+    // Log function here
+  }
+
+  // Reset log values
+  logTemp  = 0.0;
+  maxTemp  = -300.0;
+  minTemp  = 400;
+  logHumid = 0.0;
+  maxHumid = 0.0;
+  minHumid = 100.0;
+  logCount = 0;
 }
 
 void GrowBox::setValue( uint8_t no, uint16_t value ) {
@@ -193,5 +213,3 @@ uint8_t GrowBox::dht12get( float &t, float &h ) {
   t = ( buf[2] + (float) buf[3] / 10 );
   return 0;
 }
-
-

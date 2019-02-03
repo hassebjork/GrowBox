@@ -2,10 +2,9 @@
 #define _GrowBox_h
 
 #define COM
-#define INTERVAL_UPD  1000  // Update sensor interval (ms)
-#define INTERVAL_CALC 5000  // Calculate average
 #define DIM_STEP      20    // Steps to dim inc/dec PWM
 
+#include <string.h>             // strncat etc
 #include <Arduino.h>
 #include "FS.h"           // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
 
@@ -41,9 +40,18 @@ public:
   float    humidity;         // Air humidity
   float    temperature;      // Air temperature
   unsigned long millisUpd;   // Last update of temp/humid
+
+  float    logTemp      = 0.0;
+  float    maxTemp      = -300.0;
+  float    minTemp      = 400.0;
+  float    logHumid     = 0.0;
+  float    maxHumid     = 0.0;
+  float    minHumid     = 100.0;
+  unsigned int logCount = 0;
   
   GrowBox();
   void     update();
+  void     logRecord();
   void     toJson( char *c, int size );
   void     fetSet( uint8_t no, uint16_t value );
   uint16_t fetStatus( uint8_t no );

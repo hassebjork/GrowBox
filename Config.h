@@ -17,9 +17,10 @@
 #define _Config_h
 
 #include "FS.h"           // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
-#include <ArduinoJson.h>  // https://arduinojson.org/ https://arduinojson.org/assistant/
+#include "ArduinoJson.h"  // https://arduinojson.org/ https://arduinojson.org/assistant/
 #include <pgmspace.h>     // PROGMEM functions
 #include <TimeLib.h>      // https://github.com/PaulStoffregen/Time
+#include <string.h>       // strncat etc
 
 typedef struct {
   uint8_t hour;
@@ -35,18 +36,24 @@ public:
   static const char *attr[];
   static const char config_file[];
   enum ATTR {
-    NAME, TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF, attrNo
+    NAME, TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF,
+    LOGTIME, UPDATETIME, attrNo
   };
-                                  // Controller name
-  char       name[10] = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9
-  uint8_t    humidMax = 92;       // Humidity High
-  float      tempMax  = 28.0;     // Temperature High
-  int8_t     tz       = 1;        // TimeZone hours
-  bool       dst      = true;     // Daylight Saving Time
-  bool       saved    = true;     // Configuration data saved true/false
-  time_t     time;                // Current time
-  Alarm      ledOn;               //
-  Alarm      ledOff;              //
+                                // Controller name
+  char       name[10]      = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9
+  uint8_t    humidMax      = 92;     // Humidity High
+  float      tempMax       = 28.0;   // Temperature High
+  int8_t     tz            = 1;      // TimeZone hours
+  bool       dst           = true;   // Daylight Saving Time
+  bool       saved         = true;   // Configuration data saved true/false
+  time_t     time;                   // Current time
+  unsigned long logTime    = 0;      // Milliseconds between log records 0=off
+  unsigned long logMillis  = 0;      // Time of next log record in ms
+  unsigned long updateTime = 1000;   // Milliseconds between Growbox.update
+  unsigned long updMillis  = 0;      // Time to next run of Growbox.update in ms
+  
+  Alarm      ledOn;                 //
+  Alarm      ledOff;                //
 
   Config();
   void set( uint8_t d, const char *c );
