@@ -28,7 +28,7 @@ extern Config config;
 class GrowBox {
 public:
   enum FET {
-    LED, FAN1, FAN2, AUX, fetNo
+    LED, FAN, PUMP, AUX, fetNo
   };
   static const char    *fetName[];  // Name of FET pin
   static const uint8_t  fetPin[];   // FET pin number

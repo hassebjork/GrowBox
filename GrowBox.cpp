@@ -12,7 +12,7 @@
 #include "GrowBox.h"
 
 const int     GrowBox::PWM_MAX     = 1023;
-const char   *GrowBox::fetName[]   = { "led", "fan1", "fan2", "aux" };
+const char   *GrowBox::fetName[]   = { "led", "fan", "pump", "aux" };
 const uint8_t GrowBox::fetPin[]    = { 15, 2, 0, 13 };
 uint16_t      GrowBox::fetState[]  = { 0, 0, 0, 0 };  // Set value
 uint16_t      GrowBox::fetValue[]  = { 0, 0, 0, 0 };  // Current value
@@ -60,21 +60,21 @@ void GrowBox::update() {
   
   // Temp max + 2C
   if ( temperature > config.tempMax + 2.0 ) {
-    setValue( FAN1, PWM_MAX );
+    setValue( FAN, PWM_MAX );
     dim( LED, -1 );
 
   // Temp Max
   } else if ( temperature > config.tempMax ) {
     dim( LED );
-    dim( FAN1, 1 );
+    dim( FAN, 1 );
 
   // Normal temp
   } else {
     if ( humidity > config.humidMax ) {
-      dim( FAN1, 1 );
+      dim( FAN, 1 );
   } else {
       dim( LED );
-      dim( FAN1 );
+      dim( FAN );
     }
   }
 }
@@ -165,10 +165,6 @@ void GrowBox::toJson( char *c, int size ) {
     itoa( fetValue[i], buff, 10 );
     strncat( c, buff, size );
   }
-  
-  strncat( c, ",\"uptime\":", size ); 
-  itoa( millis(), buff, 10 );
-  strncat( c, buff, size ); 
   
   strncat( c, "}", size ); 
   
