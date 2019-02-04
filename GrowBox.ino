@@ -76,7 +76,7 @@ time_t syncHTTP() {
     http.end();
     return makeTime( tm );
   }
-  if ( now() < 1000 )
+  if ( millis() < 50000 )
     setTime( 0, 0, 0, 1, 1, 2000 );
   return now();
 }
@@ -207,13 +207,6 @@ void initWifi(){
   growBox.oled.print( F( "WiFi: Connecting" ) );
   growBox.oled.clearToEOL();
   wifiManager.autoConnect( config.name );
-  
-  if ( WiFi.status() == WL_CONNECTED ) {
-    if ( !MDNS.begin( config.name ) )
-      delay( 500 );
-    MDNS.addService("http", "tcp", 80);
-    growBox.oled.clear();
-  }
 }
 
 void setup(void){
@@ -231,6 +224,8 @@ void setup(void){
     growBox.oled.setCursor( 0, 1 );
     growBox.oled.print( WiFi.localIP() );
     growBox.oled.clearToEOL();
+    MDNS.begin( config.name );
+    MDNS.addService( "http", "tcp", 80 );
     server.begin();
   });
   server.on( "/", handleRoot );
@@ -271,6 +266,7 @@ void loop(void){
     if ( WiFi.status() == WL_CONNECTED ) {
       growBox.oled.print( WiFi.localIP() );
       server.handleClient();
+      MDNS.update();
     } else {
       growBox.oled.print( F( "No WiFi") );
       growBox.oled.clearToEOL();
