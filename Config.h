@@ -56,11 +56,16 @@ public:
   Alarm      ledOff;                //
 
   Config();
+  ~Config();
   void set( uint8_t d, const char *c );
   bool setAlarm( Alarm &a, const char *c );
   bool setBool( bool &b, const char *c );
 
   void toJson( char *c, int size );
+  void jsonAttribute( char *c, ATTR a, int size );
+  void jsonString( char *c, ATTR a, const char* s, int size );
+  void jsonInt( char *c, ATTR a, int i, int size );
+  void jsonFloat( char *c, ATTR a, float f, int size );
   void load();
   void save();
 };

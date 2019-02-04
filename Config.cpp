@@ -1,8 +1,17 @@
 #include "Config.h"
 
-const char *Config::attr[] = { 
-    "name", "tempMax", "humidMax", "tz", "dst",
-    "ledOn", "ledOff", "logTime", "updateTime"
+const char attr_name[]       PROGMEM = "name";
+const char attr_tempMax[]    PROGMEM = "tempMax";
+const char attr_humidMax[]   PROGMEM = "humidMax";
+const char attr_tz[]         PROGMEM = "tz";
+const char attr_dst[]        PROGMEM = "dst";
+const char attr_ledOn[]      PROGMEM = "ledOn";
+const char attr_ledOff[]     PROGMEM = "ledOff";
+const char attr_logTime[]    PROGMEM = "logTime";
+const char attr_updateTime[] PROGMEM = "updateTime";
+const char* Config::attr[]   PROGMEM = {
+  attr_name, attr_tempMax, attr_humidMax, attr_tz, attr_dst,
+  attr_ledOn, attr_ledOff, attr_logTime, attr_updateTime
 };
 
 const char Config::config_file[] PROGMEM = "/growbox.json";
@@ -13,6 +22,8 @@ Config::Config() {
   ledOff.hour   = 26;
   ledOff.minute = 60;
   load();
+}
+Config::~Config() {
 }
   
 void Config::set( uint8_t d, const char *c ) {
@@ -109,35 +120,46 @@ bool Config::setAlarm( Alarm &a, const char *c ) {
   }
   return ( hour == a.hour && minute == a.minute );
 }
-  
+
+void Config::jsonAttribute( char *c, ATTR a, int size ) {
+  strncat( c, "\"", size );
+  strncat_P( c, attr[a], size );
+  strncat( c, "\":", size );
+}
+void Config::jsonString( char *c, ATTR a, const char* s, int size ) {
+  jsonAttribute( c, a, size );
+  strncat( c, "\"", size );
+  strncat( c, s, size );
+  strncat( c, "\",", size );
+}
+void Config::jsonInt( char *c, ATTR a, int i, int size ) {
+  char buff[10];
+  jsonAttribute( c, a, size );
+  itoa( i, buff, 10 );
+  strncat( c, buff, size );
+  strncat( c, ",", size );
+}
+void Config::jsonFloat( char *c, ATTR a, float f, int size ) {
+  char buff[10];
+  jsonAttribute( c, a, size );
+  dtostrf( f, 0, 1, buff );
+  strncat( c, buff, size );
+  strncat( c, ",", size );
+}
+
 void Config::toJson( char *c, int size ) {
   char buff[10];
-  strncpy( c, "{\"name\":\"", size ); 
-  strncat( c, name, size ); 
-  strncat( c, "\",\"humidMax\":", size ); 
-  itoa( humidMax, buff, 10 );
-  strncat( c, buff, size ); 
-  strncat( c, ",\"tempMax\":", size ); 
-  dtostrf( tempMax, 0, 1, buff );
-  strncat( c, buff, size ); 
-  strncat( c, ",\"tz\":", size );
-  itoa( tz, buff, 10 );
-  strncat( c, buff, size ); 
-  strncat( c, ",\"dst\":", size ); 
-  itoa( dst, buff, 10 );
-  strncat( c, buff, size );
-  strncat( c, ",\"ledOn\":", size );
-  itoa( (uint16_t) (ledOn.hour * 100)  + ledOn.minute,  buff, 10 );
-  strncat( c, buff, size );
-  strncat( c, ",\"ledOff\":", size ); 
-  itoa( (uint16_t) (ledOff.hour * 100) + ledOff.minute, buff, 10 );
-  strncat( c, buff, size );
-  strncat( c, ",\"logTime\":", size );        // in seconds
-  itoa( (int)( logTime / 1000 ), buff, 10 );
-  strncat( c, buff, size ); 
-  strncat( c, ",\"updateTime\":", size );     // in seconds 
-  itoa( (int)( updateTime / 1000 ), buff, 10 );
-  strncat( c, buff, size ); 
+  strncpy( c, "{", size );
+  jsonString( c, NAME, name, size );
+  jsonInt( c, HUMIDMAX, humidMax, size );
+  jsonFloat( c, TEMPMAX, tempMax, size );
+  jsonInt( c, TZ, tz, size );
+  jsonInt( c, DST, dst, size );
+  jsonInt( c, LEDON, (uint16_t)(ledOn.hour * 100) + ledOn.minute, size );
+  jsonInt( c, LEDOFF, (uint16_t)(ledOff.hour * 100) + ledOff.minute, size );
+  jsonInt( c, LOGTIME, (int)( logTime / 1000 ), size );
+  jsonInt( c, UPDATETIME, (int)( updateTime / 1000 ), size );
+  *(c + strlen( c ) - 1 ) = 0;
   strncat( c, "}", size );
 //  DEBUG_MSG("Config::toJson: %d bytes\n", strlen( c ) );  
 }
@@ -157,16 +179,16 @@ void Config::load() {
     DEBUG_MSG("Config::load error: Deserialization failed!\n" );  
   } else {
     JsonObject root = doc.as<JsonObject>();
-    strlcpy( name,    root["name"]       | "DefName", sizeof( name ) );
-    set( HUMIDMAX,    root["humidMax"]   | "92" );
-    set( TEMPMAX,     root["tempMax"]    | "28.0" );
-    set( TZ,          root["tz"]         | "1" );
-    set( DST,         root["dst"]        | "1" );
-    set( LOGTIME,     root["logTime"]    | "0" );
-    set( UPDATETIME,  root["updateTime"] | "1" );
-    itoa( root["ledOn"  ] | 2560, c, 10 );
+    set( NAME,       root[attr[NAME]]       | "DefName" );
+    set( HUMIDMAX,   root[attr[HUMIDMAX]]   | "92" );
+    set( TEMPMAX,    root[attr[TEMPMAX]]    | "28.0" );
+    set( TZ,         root[attr[TZ]]         | "1" );
+    set( DST,        root[attr[DST]]        | "1" );
+    set( LOGTIME,    root[attr[LOGTIME]]    | "0" );
+    set( UPDATETIME, root[attr[UPDATETIME]] | "1" );
+    itoa( root[attr[LEDON]  ] | 2560, c, 10 );
     set( LEDON,    c );
-    itoa( root["ledOff" ] | 2560, c, 10 );
+    itoa( root[attr[LEDOFF] ] | 2560, c, 10 );
     set( LEDOFF,   c );
   }
   f.close();

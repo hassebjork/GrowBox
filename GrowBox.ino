@@ -52,12 +52,12 @@ time_t syncHTTP() {
   tmElements_t tm;
   if ( WiFi.status() == WL_CONNECTED ) {
     HTTPClient http;
-    http.begin( "http://google.com/" ); 
+    http.begin( F( "http://google.com/" ) ); 
     http.collectHeaders( headerKeys, numberOfHeaders );
     
     if ( http.GET() > 0 ) {
       uint8_t i;
-      String headerDate = http.header("date");
+      String headerDate = http.header( headerKeys[0] );
       const char * str  = headerDate.c_str();
       const char * mo   = headerDate.substring( 8, 11 ).c_str();
       
