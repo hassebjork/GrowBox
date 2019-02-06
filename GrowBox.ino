@@ -11,6 +11,8 @@
 #include <pgmspace.h>           // PROGMEM functions
 #include <string.h>             // strncat etc
 #include <pgmspace.h>           // PSTR & PROGMEM
+#include "FS.h"                 // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
+File file;
 
 #include "Config.h"             // Configuration class for local storage
 Config config;
@@ -22,6 +24,10 @@ GrowBox growBox;
 #include <TimeLib.h>      // https://github.com/PaulStoffregen/Time
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+
+const char CONTENT_TYPE_ICO = "image/x-icon";
+const char CONTENT_TYPE_TXT = "text/plain";
+const char FILE_NOT_FOUND   = "500: File not found";
 
 const char * headerKeys[] = { "date" };
 const size_t numberOfHeaders = 1;
@@ -113,7 +119,6 @@ void handleIO() {
 }
 
 void handleUpload() {
-  File file;
   HTTPUpload& upload = server.upload();
   if ( upload.status == UPLOAD_FILE_START ) {
     String filename = upload.filename;
@@ -129,20 +134,20 @@ void handleUpload() {
       server.sendHeader( "Location", "/" );         // Redirect the client to the success page
       server.send( 303 );
     } else {
-      server.send( 500, "text/plain", F( "500: couldn't create file" ) );
+      server.send( 500, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
     }
   }  
 }
 
 void handleDownload() {
-  SPIFFS.begin();
-  File file;
   if ( server.hasArg( "file" ) )
     file = SPIFFS.open( server.arg( "file" ), "r" );
-  if ( !file )
-    file = SPIFFS.open( Config::config_file, "r" );
-  size_t sent = server.streamFile( file, "text/plain" );
-  file.close();
+  if ( file ) {
+    size_t sent = server.streamFile( file, CONTENT_TYPE_TXT );
+    file.close();
+  } else {
+    server.send( 500, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
+  }
 }
 
 void handleBoot() {
@@ -211,15 +216,18 @@ void initWifi(){
 
 void setup(void){
   Serial.begin(115200);
+  SPIFFS.begin();
   config.load();
   growBox.oled.clear();
   wifiManager.setTimeout( 300 );
   wifiManager.setAPCallback( wifiAPMode );
+  
   disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
     growBox.oled.setCursor( 0, 1 );
     growBox.oled.print( F("Disconnected") );
     growBox.oled.clearToEOL();
   });
+  
   gotIPEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event) {
     growBox.oled.setCursor( 0, 1 );
     growBox.oled.print( WiFi.localIP() );
@@ -228,11 +236,21 @@ void setup(void){
     MDNS.addService( "http", "tcp", 80 );
     server.begin();
   });
+  
   server.on( "/", handleRoot );
   server.on( "/js", handleJSON );
   server.on( "/boot", handleBoot );
-  server.on( "/dl", handleDownload );
-  server.on( "/ul", handleUpload );
+  server.on( "/file", HTTP_GET, []() { DEBUG_MSG("FileGet" ) } handleDownload );
+  server.on( "/file", HTTP_POST, []() { DEBUG_MSG("FilePost" ) }, handleUpload );
+  server.on( "/favicon.ico", []() {
+    file = SPIFFS.open( "/favicon.ico", "r" );
+    if ( file ) {
+      size_t sent = server.streamFile( file, CONTENT_TYPE_ICO );
+      file.close();
+    } else {
+      server.send( 500, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
+    }
+  } );
   httpUpdater.setup( &server );
   initWifi();
   
