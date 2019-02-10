@@ -25,13 +25,13 @@ GrowBox growBox;
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 
-const char CONTENT_TYPE_ICO = "image/x-icon";
-const char CONTENT_TYPE_TXT = "text/plain";
-const char FILE_NOT_FOUND   = "500: File not found";
+const char CONTENT_TYPE_ICO[] = "image/x-icon";
+const char CONTENT_TYPE_TXT[] = "text/plain";
+const char FILE_NOT_FOUND[]   = "500: File not found";
 
-const char * headerKeys[] = { "date" };
-const size_t numberOfHeaders = 1;
-const char * _months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }; 
+const char * headerKeys[]     = { "date" };
+const size_t numberOfHeaders  = 1;
+const char * _months[]        = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }; 
 
 // WiFiManager
 #include <ESP8266WiFi.h>          // https://github.com/esp8266/Arduino
@@ -240,8 +240,8 @@ void setup(void){
   server.on( "/", handleRoot );
   server.on( "/js", handleJSON );
   server.on( "/boot", handleBoot );
-  server.on( "/file", HTTP_GET, []() { DEBUG_MSG("FileGet" ) } handleDownload );
-  server.on( "/file", HTTP_POST, []() { DEBUG_MSG("FilePost" ) }, handleUpload );
+  server.on( "/file", HTTP_GET, []() { DEBUG_MSG("FileGet" ); }, handleDownload );
+  server.on( "/file", HTTP_POST, []() { DEBUG_MSG("FilePost" ); }, handleUpload );
   server.on( "/favicon.ico", []() {
     file = SPIFFS.open( "/favicon.ico", "r" );
     if ( file ) {

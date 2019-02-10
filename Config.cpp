@@ -9,9 +9,11 @@ const char attr_ledOn[]      PROGMEM = "ledOn";
 const char attr_ledOff[]     PROGMEM = "ledOff";
 const char attr_logTime[]    PROGMEM = "logTime";
 const char attr_updateTime[] PROGMEM = "updateTime";
+const char attr_dimStep[]    PROGMEM = "dimStep";
 const char* Config::attr[]   PROGMEM = {
   attr_name, attr_tempMax, attr_humidMax, attr_tz, attr_dst,
-  attr_ledOn, attr_ledOff, attr_logTime, attr_updateTime
+  attr_ledOn, attr_ledOff, attr_logTime, attr_updateTime,
+  attr_dimStep
 };
 
 const char Config::config_file[] PROGMEM = "/growbox.json";
@@ -94,6 +96,15 @@ void Config::set( uint8_t d, const char *c ) {
     }
     break;
     
+    case DIMSTEP: {
+      uint8_t i = atoi( c );
+      if ( i <= 200 ) {
+        saved = ( i == dimStep );
+        dimStep = i;
+      }
+    }
+    break;
+    
   }
 }
 
@@ -159,6 +170,7 @@ void Config::toJson( char *c, int size ) {
   jsonInt( c, LEDOFF, (uint16_t)(ledOff.hour * 100) + ledOff.minute, size );
   jsonInt( c, LOGTIME, (int)( logTime / 1000 ), size );
   jsonInt( c, UPDATETIME, (int)( updateTime / 1000 ), size );
+  jsonInt( c, DIMSTEP, dimStep, size );
   *(c + strlen( c ) - 1 ) = 0;
   strncat( c, "}", size );
 //  DEBUG_MSG("Config::toJson: %d bytes\n", strlen( c ) );  
@@ -182,10 +194,11 @@ void Config::load() {
     set( NAME,       root[attr[NAME]]       | "DefName" );
     set( HUMIDMAX,   root[attr[HUMIDMAX]]   | "92" );
     set( TEMPMAX,    root[attr[TEMPMAX]]    | "28.0" );
-    set( TZ,         root[attr[TZ]]         | "1" );
-    set( DST,        root[attr[DST]]        | "1" );
-    set( LOGTIME,    root[attr[LOGTIME]]    | "0" );
-    set( UPDATETIME, root[attr[UPDATETIME]] | "1" );
+    set( TZ,         root[attr[TZ]]         | "1"  );
+    set( DST,        root[attr[DST]]        | "1"  );
+    set( LOGTIME,    root[attr[LOGTIME]]    | "0"  );
+    set( UPDATETIME, root[attr[UPDATETIME]] | "1"  );
+    set( DIMSTEP,    root[attr[DIMSTEP]]    | "20" );
     itoa( root[attr[LEDON]  ] | 2560, c, 10 );
     set( LEDON,    c );
     itoa( root[attr[LEDOFF] ] | 2560, c, 10 );

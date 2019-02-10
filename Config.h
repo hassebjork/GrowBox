@@ -37,7 +37,7 @@ public:
   static const char config_file[];
   enum ATTR {
     NAME, TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF,
-    LOGTIME, UPDATETIME, attrNo
+    LOGTIME, UPDATETIME, DIMSTEP, attrNo
   };
                                 // Controller name
   char       name[10]      = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9
@@ -51,6 +51,7 @@ public:
   unsigned long logMillis  = 0;      // Time of next log record in ms
   unsigned long updateTime = 1000;   // Milliseconds between Growbox.update
   unsigned long updMillis  = 0;      // Time to next run of Growbox.update in ms
+  uint8_t    dimStep       = 10;     // Dimmer steps
   
   Alarm      ledOn;                 //
   Alarm      ledOff;                //

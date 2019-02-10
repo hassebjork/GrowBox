@@ -116,28 +116,28 @@ void GrowBox::dim( uint8_t no, int8_t  v ) {
       return;
     
     if ( l < fetState[no] ) {
-      l += DIM_STEP;
+      l += config.dimStep;
       setValue( no, l > fetState[no] ? fetState[no] : l );
     } else if ( l > fetState[no] ) {
-      if ( l < DIM_STEP ) {
+      if ( l < config.dimStep ) {
         setValue( no, 0 );
       } else {
-        l -= DIM_STEP;
+        l -= config.dimStep;
         setValue( no, l < fetState[no] ? fetState[no] : l );
       }
     }
   
   // Increase
   } else if ( v > 0 ) {
-    l += DIM_STEP;
+    l += config.dimStep;
     setValue( no, l > PWM_MAX ? PWM_MAX : l );
 
   // Decrease
   } else if ( v < 0 ) {
-    if ( l < DIM_STEP ) {
+    if ( l < config.dimStep ) {
       setValue( no, 0 );
     } else {
-      l -= DIM_STEP;
+      l -= config.dimStep;
       setValue( no, l < 0 ? 0 : l );
     }
   }

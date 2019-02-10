@@ -1,12 +1,9 @@
 #ifndef _GrowBox_h
 #define _GrowBox_h
 
-#define COM
-#define DIM_STEP      20    // Steps to dim inc/dec PWM
-
-#include <string.h>             // strncat etc
 #include <Arduino.h>
-#include "FS.h"           // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
+#include <string.h>             // strncat etc
+#include "FS.h"                 // https://github.com/esp8266/Arduino/tree/master/cores/esp8266
 
 /* CONTROL */
 #define SDA  4
