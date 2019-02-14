@@ -2,8 +2,10 @@
  * ArduinoJson
  * https://arduinojson.org/v5/example/config/
  * 
- * POST file to SPIFFS
- * https://tttapa.github.io/ESP8266/Chap12%20-%20Uploading%20to%20Server.html
+ * Binary Files
+ * https://stackoverflow.com/questions/5506645/how-to-read-write-a-struct-in-binary-files
+ * https://stackoverflow.com/questions/11928053/read-write-a-complex-struct-into-the-binary-file
+ * https://stackoverflow.com/a/46948683/4405465
  * 
  */
 
