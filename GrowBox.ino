@@ -52,8 +52,6 @@ ESP8266HTTPUpdateServer httpUpdater;
 WiFiEventHandler gotIPEventHandler;         // https://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/generic-examples.html#event-driven-methods
 WiFiEventHandler disconnectedEventHandler;  // https://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/generic-examples.html#event-driven-methods
 
-const char spinner[] = ".oOo";
-
 time_t syncHTTP() {
   tmElements_t tm;
   if ( WiFi.status() == WL_CONNECTED ) {
@@ -103,11 +101,9 @@ bool checkDst() {
 }
 
 void handleIO() {
-  int t;
   for ( uint8_t i = 0; i < GrowBox::fetNo; i++ ) {
     if ( server.hasArg( GrowBox::fetName[i] ) ) {
-      t = atoi( server.arg( GrowBox::fetName[i] ).c_str() );
-      growBox.fetSet( i, t );
+      growBox.fetSet( i, atoi( server.arg( GrowBox::fetName[i] ).c_str() ) );
     }
   }
   for ( uint8_t i = 0; i < Config::attrNo; i++ ) {
@@ -300,5 +296,5 @@ void loop(void){
   }
 
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
-  yield();
+  delay( 400 );
 }

@@ -11,6 +11,8 @@
  */
 #include "GrowBox.h"
 
+const char    GrowBox::TEMP[]      = "temp";
+const char    GrowBox::HUMID[]     = "humid";
 const int     GrowBox::PWM_MAX     = 1023;
 const char   *GrowBox::fetName[]   = { "led", "fan", "pump", "aux" };
 const uint8_t GrowBox::fetPin[]    = { 15, 2, 0, 13 };
@@ -98,13 +100,9 @@ void GrowBox::logRecord() {
 }
 
 void GrowBox::setValue( uint8_t no, uint16_t value ) {
-  if ( value > PWM_MAX ) {
-    fetValue[no] = PWM_MAX;
-    analogWrite( fetPin[no], PWM_MAX );
-  } else {
-    fetValue[no] = value;
-    analogWrite( fetPin[no], value );
-  }
+  fetValue[no] = ( value > PWM_MAX ? PWM_MAX : value );
+  analogWrite( fetPin[no], fetValue[no] );
+//   DEBUG_MSG("GrowBox::setValue: %d = %d\n", fetPin[no], fetValue[no] );
 }
 
 void GrowBox::dim( uint8_t no, int8_t  v ) {
@@ -145,27 +143,22 @@ void GrowBox::dim( uint8_t no, int8_t  v ) {
 
 void GrowBox::toJson( char *c, int size ) {
   char buff[10];
-  strncpy( c, "{\"temp\":", size ); 
-  dtostrf( temperature, 0, 1, buff );
-  strncat( c, buff, size ); 
-  strncat( c, ",\"humid\":", size ); 
-  dtostrf( humidity, 0, 1, buff );
-  strncat( c, buff, size ); 
+  strncpy( c, "{", size );
+  config.jsonAttribute( c, TEMP, size );
+  config.toJson( c, temperature, size );
+  strncat( c, ",", size ); 
+  config.jsonAttribute( c, HUMID, size );
+  config.toJson( c, humidity, size );
     
-  for ( uint8_t i = 0; i < sizeof( fetPin); i++ ) {
+  for ( uint8_t i = 0; i < sizeof(fetPin); i++ ) {
     strncat( c, ",\"", size );
     strncat( c, fetName[i], size );
-    strncat( c, "\":", size );
-    itoa( fetStatus(i), buff, 10 );
-    strncat( c, buff, size );
-    
-    strncat( c, ",\"a", size );
-    strncat( c, fetName[i], size );
-    strncat( c, "\":", size );
-    itoa( fetValue[i], buff, 10 );
-    strncat( c, buff, size );
+    strncat( c, "\":[", size );
+	config.toJson( c, fetState[i], size );
+    strncat( c, ",", size );
+	config.toJson( c, fetValue[i], size );
+    strncat( c, "]", size );
   }
-  
   strncat( c, "}", size ); 
   
 //  DEBUG_MSG("GrowBox::toJson: %d bytes\n", strlen( c ) );

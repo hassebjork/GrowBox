@@ -32,6 +32,8 @@ public:
   static       uint16_t fetValue[]; // Current value
   static       uint16_t fetState[]; // Set value
   static const int      PWM_MAX;
+  static const char     TEMP[];  	// "temp"
+  static const char     HUMID[];  	// "humid"
   
   SSD1306AsciiWire oled;
   float    humidity;         // Air humidity

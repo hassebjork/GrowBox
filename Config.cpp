@@ -132,50 +132,63 @@ bool Config::setAlarm( Alarm &a, const char *c ) {
   return ( hour == a.hour && minute == a.minute );
 }
 
-void Config::jsonAttribute( char *c, ATTR a, int size ) {
-  strncat( c, "\"", size );
-  strncat_P( c, attr[a], size );
-  strncat( c, "\":", size );
-}
-void Config::jsonString( char *c, ATTR a, const char* s, int size ) {
-  jsonAttribute( c, a, size );
-  strncat( c, "\"", size );
-  strncat( c, s, size );
-  strncat( c, "\",", size );
-}
-void Config::jsonInt( char *c, ATTR a, int i, int size ) {
-  char buff[10];
-  jsonAttribute( c, a, size );
-  itoa( i, buff, 10 );
-  strncat( c, buff, size );
-  strncat( c, ",", size );
-}
-void Config::jsonFloat( char *c, ATTR a, float f, int size ) {
-  char buff[10];
-  jsonAttribute( c, a, size );
-  dtostrf( f, 0, 1, buff );
-  strncat( c, buff, size );
-  strncat( c, ",", size );
-}
-
 void Config::toJson( char *c, int size ) {
   char buff[10];
   strncpy( c, "{", size );
-  jsonString( c, NAME, name, size );
-  jsonInt( c, HUMIDMAX, humidMax, size );
-  jsonFloat( c, TEMPMAX, tempMax, size );
-  jsonInt( c, TZ, tz, size );
-  jsonInt( c, DST, dst, size );
-  jsonInt( c, LEDON, (uint16_t)(ledOn.hour * 100) + ledOn.minute, size );
-  jsonInt( c, LEDOFF, (uint16_t)(ledOff.hour * 100) + ledOff.minute, size );
-  jsonInt( c, LOGTIME, (int)( logTime / 1000 ), size );
-  jsonInt( c, UPDATETIME, (int)( updateTime / 1000 ), size );
-  jsonInt( c, DIMSTEP, dimStep, size );
-  *(c + strlen( c ) - 1 ) = 0;
+  toJson( c, NAME, name, size );
+  toJson( c, HUMIDMAX, humidMax, size );
+  toJson( c, TEMPMAX, tempMax, size );
+  toJson( c, TZ, tz, size );
+  toJson( c, DST, dst, size );
+  toJson( c, LEDON, (uint16_t)(ledOn.hour * 100) + ledOn.minute, size );
+  toJson( c, LEDOFF, (uint16_t)(ledOff.hour * 100) + ledOff.minute, size );
+  toJson( c, LOGTIME, (int)( logTime / 1000 ), size );
+  toJson( c, UPDATETIME, (int)( updateTime / 1000 ), size );
+  toJson( c, DIMSTEP, dimStep, size );
   strncat( c, "}", size );
-//  DEBUG_MSG("Config::toJson: %d bytes\n", strlen( c ) );  
+//   DEBUG_MSG("Config::toJson: %d bytes %d buff\n", strlen( c ), size );
 }
-  
+void Config::jsonAttribute( char *c, ATTR a, int size ) {
+	if ( a != NAME )
+		strncat( c, ",", size );
+	toJson( c, attr[a], size );
+	strncat( c, ":", size );
+}
+void Config::jsonAttribute( char *c, const char *a, int size ) {
+	toJson( c, a, size );
+	strncat( c, ":", size );
+}
+// String
+void Config::toJson( char *c, const char* s, int size ) {
+  strncat( c, "\"", size );
+  strncat( c, s, size );
+  strncat( c, "\"", size );
+}
+void Config::toJson( char *c, ATTR a, const char* s, int size ) {
+  jsonAttribute( c, a, size );
+  toJson( c, s, size );
+}
+// Integer
+void Config::toJson( char *c, int i, int size ) {
+  char buff[10];
+  itoa( i, buff, 10 );
+  strncat( c, buff, size );
+}
+void Config::toJson( char *c, ATTR a, int i, int size ) {
+  jsonAttribute( c, a, size );
+  toJson( c, i, size );
+}
+// Float
+void Config::toJson( char *c, float f, int size ) {
+  char buff[10];
+  dtostrf( f, 0, 1, buff );
+  strncat( c, buff, size );
+}
+void Config::toJson( char *c, ATTR a, float f, int size ) {
+  jsonAttribute( c, a, size );
+  toJson( c, f, size );
+}
+
 void Config::load() {
   DEBUG_MSG("Config::load()\n" );  
   SPIFFS.begin();

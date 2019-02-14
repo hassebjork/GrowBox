@@ -63,10 +63,14 @@ public:
   bool setBool( bool &b, const char *c );
 
   void toJson( char *c, int size );
+  void jsonAttribute( char *c, const char *a, int size );
   void jsonAttribute( char *c, ATTR a, int size );
-  void jsonString( char *c, ATTR a, const char* s, int size );
-  void jsonInt( char *c, ATTR a, int i, int size );
-  void jsonFloat( char *c, ATTR a, float f, int size );
+  void toJson( char *c, const char* s, int size );
+  void toJson( char *c, ATTR a, const char* s, int size );
+  void toJson( char *c, int i, int size );
+  void toJson( char *c, ATTR a, int i, int size );
+  void toJson( char *c, float f, int size );
+  void toJson( char *c, ATTR a, float f, int size );
   void load();
   void save();
 };
