@@ -2,10 +2,20 @@
  *   https://hackingmajenkoblog.wordpress.com/2016/02/04/the-evils-of-arduino-strings/
  * 
  * TODO
+ * Security
+ *   Password lock handleIO, fw update and file uploads
+ * 
  * Logging 
  *   Save data to server 
- *   Save data to SPIFFS
- *   Download data file
+ *   Save log to SPIFFS
+ * 
+ * Files
+ *   File browser
+ *   File upload form
+ *   Firmware update form
+ * 
+ * Integration
+ *   iframe to database with growbox contents
  */
 
 #include <pgmspace.h>           // PROGMEM functions
@@ -138,7 +148,7 @@ void handleJSON() {
   char buff[250] = "";
   handleIO();
 
-  strncpy( temp, "{\"chip\":", sizeof( temp ) );
+  strncpy( temp, "{\"ver\":0.5,\"chip\":", sizeof( temp ) );
   itoa( ESP.getChipId(), buff, 10 );
   strncat( temp, buff, sizeof( temp ) );
   strncat( temp, ",\"config\":", sizeof( temp ) );

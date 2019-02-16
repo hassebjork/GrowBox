@@ -1,0 +1,260 @@
+<html lang="en">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAgMAAAAOFJJnAAAADFBMVEUAAAAAgADUVQD/ZgCSsVQCAAAAAXRSTlMAQObYZgAAAHRJREFUGNNtzTEOgCAMheE2xsW9l/AS4OCOSd/9HA2n8GZY2gEHfpYvTVOIKJPHgsAKFIcAOgBkkgtgQG3HXgfjAAcUZwdBxfaKwZdyv8ga13VVOIiLlPguU8SOmMxbUmrp7WjWD9NqrY9jn+F2bD4J3AOjDy5FLxVhu+jNAAAAAElFTkSuQmCC" rel="icon" type="image/png" /> 
+		<title>GrowBox</title>
+		<style>
+@import url('https://fonts.googleapis.com/css?family=Luckiest+Guy');
+
+body { background-color: black }
+
+/* Dash background */
+div.dbg {
+	position:absolute;
+	border-radius:25px;
+	background-image:linear-gradient(rgba(255,255,255,.4), rgba(255,255,255,.0));
+	border: 2px solid #444;
+	color: #e0e0e0;
+	font-size: 3.5em;
+	font-family: 'Luckiest Guy', cursive;
+	display: inline-block;
+	clear: both;
+	text-align:center;
+}
+
+/* Title dash*/
+.dti { 
+	top: 8px;
+	left: 8px;
+	height: 70px;
+	width: 300px;
+	z-index:5;
+}
+.dti div {
+	text-shadow: 4px 4px 2px #444;
+	line-height:1.5em;
+	font-size: .8em;
+}
+
+/* Dash Temp / Humid */
+.dth { 
+	width:300px;
+	height:200px;
+	top: 80px;
+	left: 8px;
+}
+div.dth svg { 
+	height:60%; 
+	position:relative; 
+	top:10%;
+}
+/* Temp / Humid top/bottom pane */
+div.dash { 
+	height:49%;
+}
+
+div.dbg .txt { 
+	position:relative; 
+	top:10%; 
+	text-shadow: 4px 4px 2px #444;
+	width:50%;
+	display:inline-block;
+}
+/* Temp / Humid Min/Max */
+.mimx {
+	position:relative;
+	font-size:.4em;
+	display:inline-block;
+	text-align:center;
+	top:20%;
+	text-shadow: 4px 4px 2px #444;
+}
+/* Button increas/decrease */
+.up, .down {
+	display:inline-block;
+	width:24px;height:24px;
+	fill:#ccc;
+	opacity:.1;
+	background-color:#444;
+}
+.up:hover, .down:hover {
+	opacity:.6;
+}
+/* Dash LED */
+.dled { 
+	left: 8px;
+	fill:#ffcc00;
+}
+/* Dash FAN */
+.dfan { 
+	left: 158px;
+	fill:#37c871;
+}
+.dled, .dfan { 
+	width:148px;
+	height:100px;
+	top: 282px;
+}
+.dled svg, .dfan svg {
+	height:60px;
+	display:inline-block;
+}
+/* Dash LED/FAN text */
+.da {
+	font-size: 0.25em;
+	color: #555;
+}
+/* Form, button */
+.dfrm { 
+	width:300px;
+	height:100px;
+	top: 384px;
+}
+/*.dfrm a {
+	float:left;
+}*/
+.dfrm svg {
+	height:60px;
+	display:inline-block;
+	fill:#c87137;
+}
+	</style>
+	<script type="text/javascript">
+
+// https://css.github.io/csso/csso.html
+// https://jscompress.com/
+// https://www.willpeavy.com/minifier/
+
+window.addEventListener('DOMContentLoaded', function() {
+	GB.i();
+}, false );
+
+function ajax( url, callback, obj ) {
+	var req = new XMLHttpRequest();
+	req.onreadystatechange = function() {
+		if ( req.readyState == 4 ) {
+			if ( req.status == 0 )
+				status( "Server not responding!", "error" );
+			else if ( req.status != 200 )
+				status( "Error: " + req.status, "error" );
+			else
+				callback( req, obj );
+		}
+	}
+	req.open( "GET", url, true );
+	req.send();
+}
+
+function status( txt, className ) {
+	var status = document.createElement( "div" );
+	status.appendChild( document.createTextNode( txt ) );
+	status.className = "status " + className || "";
+	document.body.insertBefore( status, document.body.firstChild );
+	setTimeout( function( n ) { return function() { n.parentNode.removeChild( n ); }; }( status ), 10000 );
+}
+
+function $(s) {
+	return document.getElementById(s);
+}
+var GB = GB || {				// GrowBox
+	t: 0,						// Delay
+	m: null,					// Timer
+	d: null,					// Data
+	
+	i: function() {				// Init
+		GB.h    = {};
+		GB.h.ti = $("ti");		// Title
+		GB.h.t  = $("t");		// Temperature
+		GB.h.h  = $("h");		// Humidity
+		GB.h.tm = $("tm");		// Max temp
+		GB.h.hm = $("hm");		// Max temp
+		GB.h.l  = $("led");		// Led input
+		GB.h.f  = $("fan");		// Fan input
+		GB.h.al = $("aled");	// Led actual
+		GB.h.af = $("afan");	// Fan actual
+		GB.a( "js");	// 
+		GB.m = setInterval( GB.r, 60000 );
+	},
+	r: function() {				// Refresh
+		GB.a( "js");
+	},
+	a: function(u) {			// Ajax
+		var t = Date.now();
+		if ( t > GB.t + 500 ) {
+			GB.t = t;
+			ajax( u, GB.s );
+		}
+	},
+	s: function(r) {			// Show
+		GB.d = JSON.parse( r.responseText );
+		document.title    = GB.d.config.name;
+		GB.h.ti.innerHTML = GB.d.config.name;
+		GB.h.t.innerHTML  = GB.d.state.temp + "&deg;C";
+		GB.h.tm.innerHTML = GB.d.config.tempMax + "&deg;C";
+		GB.h.h.innerHTML  = GB.d.state.humid + "%";
+		GB.h.hm.innerHTML = GB.d.config.humidMax + "%";
+		GB.h.l.value      = GB.d.state.led[0];
+		GB.h.f.value      = GB.d.state.fan[0];
+		GB.h.al.innerHTML = GB.d.state.led[1];
+		GB.h.af.innerHTML = GB.d.state.fan[1];
+	},
+	n: function(r) {			// Execute slider
+		GB.a( "js?" + r.id + "=" + r.value );
+	},
+	dw: function(r) {			// Execute down
+		GB.a( "js?" + r + "=" + ( GB.d.config[r] - 1 ) );
+	},
+	up: function(r) {			// Execute up
+		GB.a( "js?" + r + "=" + ( GB.d.config[r] + 1 ) );
+	},
+}
+	</script>
+	</head>
+	<body>
+	
+	<div class="dbg dti"><div id="ti">GrowBox</div></div>
+	<div class="dbg dth">
+		<div class="dash">
+			<svg style="fill:#ffaaaa" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" class="icon"><path d="M125 14c-20 0-36 15-37 35v98a53 53 0 0 0-15 37c0 29 24 53 53 53s53-24 53-53a53 53 0 0 0-15-37v-98c-1-20-18-35-37-35zm0 16c11 0 23 8 21 28h-30v15h15v15h-15v15h15v15h-15v15h15v15h-15v13c-8 2-14 12-15 20h-10c-0-13 3-22 14-27v-109c1-9 10-14 19-15 0 0 1 0 1 0z"/></svg>
+			<div id="t" class="txt">---&deg;C</div>
+			<div class="mimx">
+				<div class="up" title="Increase temperature limit" onclick="GB.up('tempMax')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 115 115"><path d="M16 104c-8 -2-12 -9-9 -16l44-77c4-6 13-7 17 0l44 77c4 7-3 15-9 16z"/></svg></div>
+				<div id="tm">--&deg;C</div>
+				<div class="down" title="Decrease temperature limit" onclick="GB.dw('tempMax')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 115 115"><path d="M16 11c-8 2-12 9-9 16l44 77c4 6 13 7 17 0l44-77c4 -7-3-15-9-16z"/></svg></div>
+			</div>
+		</div>
+		<div style="background-color:#fff;height:5px;width:80%;margin:auto;"></div>
+		<div class="dash">
+			<svg style="fill:#80b3ff" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" class="icon"><path d="M125 12c-22 0-14 38-28 57-12 16-43 57-42 88 1 31 19 71 71 71s70-40 71-71c1-31-31-72-42-88-15-20-7-57-28-57zm40 154c11 7-4 41-25 34-8-5 6-6 15-14 9-8 5-24 10-20z"/></svg>
+			<div id="h" class="txt">---%</div>
+			<div class="mimx">
+				<div class="up" title="Increase humidity limit" onclick="GB.up('humidMax')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 115 115"><path d="M16 104c-8 -2-12 -9-9 -16l44-77c4-6 13-7 17 0l44 77c4 7-3 15-9 16z"/></svg></div>
+				<div id="hm">--%</div>
+				<div class="down" title="Decrease humidity limit" onclick="GB.dw('humidMax')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 115 115"><path d="M16 11c-8 2-12 9-9 16l44 77c4 6 13 7 17 0l44-77c4 -7-3-15-9-16z"/></svg></div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="dbg dled">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250"><path d="M158 195v-13c0-6 8-1 9-29 1-25 31-37 29-81-2-44-38-67-72-67-33 0-70 23 -72 67-2 44 28 56 29 81 1 29 9 23 9 29v13zm-68 5v11h68v-11zm0 16v11h68v-11zm15 16v11h38v-11z"/></svg>
+		<div><input type="range" id="led" min="0" max="1023" value="0" oninput="GB.n(this)"/></div>
+		<div class="da" id="aled">-%</div>
+	</div>
+	<div class="dbg dfan">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250"><path d="M237 147c-6-54-56-39-83-30 11 20 1 43-20 50 13 16 3 50 8 57 16 30 101-23 95-77zm-183 79c50 22 62-28 68-57-23-1-38-21-34-42-20 3-45-22-53-21-34-1-30 99 19 120zm23-198c-44 32-6 68 16 87 12-20 37-22 53 -8 7-19 42-28 45-36 18-29-71-76-115-42zM122 107A27 27 0 0 0 95 135a27 27 0 0 0 27 27 27 27 0 0 0 27-27 27 27 0 0 0-27-28zm0 14a14 14 0 0 1 14 14 14 14 0 0 1-14 14 14 14 0 0 1-14-14 14 14 0 0 1 14-14z"/></svg>
+		<div><input type="range" id="fan" min="0" max="1023" value="0" oninput="GB.n(this)"/></div>
+		<div class="da" id="afan">-%</div>
+	</div>
+	
+	<div class="dfrm dbg">
+		<a href="javascript:void(0)" onclick="GB.r()" title="Update">
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250"><path d="M124 12A110 110 0 0 0 14 122a110 110 0 0 0 110 110 110 110 0 0 0 110-110A110 110 0 0 0 124 12zm0 46c17 0 34 7 46 19l11-8c2-2 5-1 5 2v51c0 2-1 3-4 2l-49-17c-2 0-2-2 0-4l14-10c-7-5-15-8-24-8-22 0-39 17-39 39s17 39 39 39a39 39 0 0 0 33-19s3-1 3 0l18 12c1 1 1 2 1 3a66 66 0 0 1-55 30c-36 0-66-30-66-66s30-66 66-65z"/></svg>
+		</a>
+	</div>
+	
+	<form action="/file" method="post" enctype="multipart/form-data" style="display:none;position:absolute;left:350px;width:200px">
+		<input type="file" name="name">
+		<input class="button" type="submit" value="Upload">
+	</form>
+	</body>
+</html>
