@@ -133,20 +133,6 @@ void handleBoot() {
   ESP.restart();
 }
 
-void handleRoot() {
-  handleIO();
-  char temp[120];
-  snprintf_P( temp, sizeof( temp ),
-    PSTR("<html><head><script src='https://bjork.es/js/growbox.js?l=%d'></script></head><body></body></html>"),
-    millis()
-  );
-
-  server.sendHeader( HEADER_CACHE, "public, max-age=86400" );
-  server.sendHeader( HEADER_CONNECTION, HEADER_CLOSE );
-  server.send ( 200, CONTENT_TYPE_HTM, temp );
-//  server.send ( 200, CONTENT_TYPE_HTM, F("<html><head><script src='https://bjork.es/js/growbox.js'></script></head><body></body></html>") );
-}
-
 void handleJSON() {
   char temp[350];
   char buff[250] = "";
@@ -163,10 +149,10 @@ void handleJSON() {
   strncat( temp, buff, sizeof( temp ) );
   strncat( temp, "}", sizeof( temp ) );
   
+  server.sendHeader( "Access-Control-Allow-Origin", "*" );
   server.sendHeader( HEADER_CACHE, "no-cache" );
   server.sendHeader( HEADER_CONNECTION, HEADER_CLOSE );
   server.send ( 200, CONTENT_TYPE_JSON, temp );
-  
 //  DEBUG_MSG("handleJSON: %d bytes\n", strlen( temp ) );  
 }
 
@@ -210,8 +196,10 @@ bool fileDownload( String path ) {
   String contentType = getContentType( path );
   String pathWithGz = path + ".gz";
   if ( SPIFFS.exists( pathWithGz ) || SPIFFS.exists( path ) ) {
-    if ( SPIFFS.exists( pathWithGz ) )
+    if ( SPIFFS.exists( pathWithGz ) ) {
       path += ".gz";
+      server.sendHeader( "Content-Encoding", "gzip" );
+	}
     File file = SPIFFS.open( path, "r" );
     size_t sent = server.streamFile( file, contentType );
     file.close();
@@ -270,13 +258,13 @@ void fileList( String path = "/" ) {
 }
 
 void fileDelete( String path = "/" ) {
-	DEBUG_MSG( "fileDelete: %s\n", path.c_str() );
-	if ( path == "/" )
-		return server.send( 500, CONTENT_TYPE_TXT, "BAD PATH" );
-	if ( !SPIFFS.exists( path ) )
-		return server.send(404, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
-	SPIFFS.remove( path );
-	server.send( 200, CONTENT_TYPE_TXT, "");
+  DEBUG_MSG( "fileDelete: %s\n", path.c_str() );
+  if ( path == "/" )
+    return server.send( 500, CONTENT_TYPE_TXT, "BAD PATH" );
+  if ( !SPIFFS.exists( path ) )
+    return server.send(404, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
+  SPIFFS.remove( path );
+  server.send( 200, CONTENT_TYPE_TXT, "");
 }
 
 void setup(void){
@@ -302,20 +290,24 @@ void setup(void){
     server.begin();
   });
   
-  server.on( "/", handleRoot );
+  server.on( "/", []{
+    handleIO();
+    if ( !fileDownload( "/index.htm" ) )
+      server.send( 404, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
+  } );
   server.on( "/js", handleJSON );
   server.on( "/boot", handleBoot );
   server.on( "/file", HTTP_POST, [](){
-	  server.send( 200 ); }, fileUpload );
+    server.send( 200 ); }, fileUpload );
   server.on( "/file", HTTP_GET, []() {
-	if ( server.hasArg( FILE_FILE ) && fileDownload( server.arg( FILE_FILE ) ) ) {
-		return;
-	} else if ( server.hasArg( FILE_DIR ) ) {
-		return fileList( server.arg( FILE_DIR ) );
-	} else if ( server.hasArg( FILE_DEL ) ) {
-		return fileDelete( server.arg( FILE_DEL ) );
-	}
-	server.send( 404, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
+    if ( server.hasArg( FILE_FILE ) && fileDownload( server.arg( FILE_FILE ) ) ) {
+      return;
+    } else if ( server.hasArg( FILE_DIR ) ) {
+      return fileList( server.arg( FILE_DIR ) );
+    } else if ( server.hasArg( FILE_DEL ) ) {
+      return fileDelete( server.arg( FILE_DEL ) );
+    }
+    server.send( 404, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
   });
   server.on( FILE_FAVICON, []() {
     if ( !fileDownload( FILE_FAVICON ) )
