@@ -11,8 +11,6 @@
  * 
  * Files
  *   File browser
- *   File upload form
- *   Firmware update form
  * 
  * Integration
  *   iframe to database with growbox contents
@@ -37,10 +35,28 @@ GrowBox growBox;
 
 const char CONTENT_TYPE_TXT[]  = "text/plain";
 const char CONTENT_TYPE_HTM[]  = "text/html";
+const char CONTENT_TYPE_CSS[]  = "text/css";
+const char CONTENT_TYPE_JS[]   = "application/javascript";
 const char CONTENT_TYPE_JSON[] = "application/json";
+const char CONTENT_TYPE_PNG[]  = "image/png";
+const char CONTENT_TYPE_GIF[]  = "image/gif";
+const char CONTENT_TYPE_JPG[]  = "image/jpeg";
+const char CONTENT_TYPE_ICO[]  = "image/x-icon";
+const char CONTENT_TYPE_XML[]  = "text/xml";
+const char CONTENT_TYPE_PDF[]  = "application/x-pdf";
+const char CONTENT_TYPE_ZIP[]  = "application/x-zip";
+const char CONTENT_TYPE_GZ[]   = "application/x-gzip";
+const char CONTENT_TYPE_DAT[]  = "application/octet-stream";
+
+const char HEADER_CONT_ENC[]   = "Content-Encoding";
+const char HEADER_ACCESS_CTR[] = "Access-Control-Allow-Origin";
 const char HEADER_CACHE[]      = "Cache-Control";
 const char HEADER_CONNECTION[] = "Connection";
 const char HEADER_CLOSE[]      = "close";
+const char HEADER_LOCATION[]   = "Location";
+
+const char FTYP_GZ[]             = ".gz";
+
 const char FILE_FILE[]         = "file";
 const char FILE_DIR[]          = "dir";
 const char FILE_DEL[]          = "del";
@@ -140,8 +156,7 @@ void handleJSON() {
   Config::jsonAttribute( temp, "state", true, sizeof( temp ) );
   growBox.toJson( temp, sizeof( temp ) );
   strncat( temp, "}", sizeof( temp ) );
-  
-  server.sendHeader( "Access-Control-Allow-Origin", "*" );
+  server.sendHeader( HEADER_ACCESS_CTR, "*" );
   server.sendHeader( HEADER_CACHE, "no-cache" );
   server.sendHeader( HEADER_CONNECTION, HEADER_CLOSE );
   server.send ( 200, CONTENT_TYPE_JSON, temp );
@@ -165,20 +180,21 @@ void initWifi(){
   wifiManager.autoConnect( config.name );
 }
 
-String getContentType( String filename ) {
+const char* getContentType( String filename ) {
   if ( filename.endsWith( ".html" ) ) return CONTENT_TYPE_HTM;
   else if ( filename.endsWith( ".htm"  ) ) return CONTENT_TYPE_HTM;
-  else if ( filename.endsWith( ".css"  ) ) return "text/css";
-  else if ( filename.endsWith( ".js"   ) ) return "application/javascript";
-  else if ( filename.endsWith( ".png"  ) ) return "image/png";
-  else if ( filename.endsWith( ".gif"  ) ) return "image/gif";
-  else if ( filename.endsWith( ".jpg"  ) ) return "image/jpeg";
-  else if ( filename.endsWith( ".ico"  ) ) return "image/x-icon";
-  else if ( filename.endsWith( ".xml"  ) ) return "text/xml";
-  else if ( filename.endsWith( ".pdf"  ) ) return "application/x-pdf";
-  else if ( filename.endsWith( ".zip"  ) ) return "application/x-zip";
-  else if ( filename.endsWith( ".gz"   ) ) return "application/x-gzip";
-  else if ( filename.endsWith( ".dat"  ) ) return "application/octet-stream";
+  else if ( filename.endsWith( ".css"  ) ) return CONTENT_TYPE_CSS;
+  else if ( filename.endsWith( ".js"   ) ) return CONTENT_TYPE_JS;
+  else if ( filename.endsWith( ".json" ) ) return CONTENT_TYPE_JSON;
+  else if ( filename.endsWith( ".png"  ) ) return CONTENT_TYPE_PNG;
+  else if ( filename.endsWith( ".gif"  ) ) return CONTENT_TYPE_GIF;
+  else if ( filename.endsWith( ".jpg"  ) ) return CONTENT_TYPE_JPG;
+  else if ( filename.endsWith( ".ico"  ) ) return CONTENT_TYPE_ICO;
+  else if ( filename.endsWith( ".xml"  ) ) return CONTENT_TYPE_XML;
+  else if ( filename.endsWith( ".pdf"  ) ) return CONTENT_TYPE_PDF;
+  else if ( filename.endsWith( ".zip"  ) ) return CONTENT_TYPE_ZIP;
+  else if ( filename.endsWith( FTYP_GZ ) ) return CONTENT_TYPE_GZ;
+  else if ( filename.endsWith( ".dat"  ) ) return CONTENT_TYPE_DAT;
   return CONTENT_TYPE_TXT;
 }
 
@@ -186,13 +202,14 @@ bool fileDownload( String path ) {
   DEBUG_MSG( "fileDownload: %s\n", path.c_str() );
   if ( !path.startsWith( "/" ) )
     path = "/" + path;
-  String contentType = getContentType( path );
-  String pathWithGz = path + ".gz";
+  const char* contentType = getContentType( path );
+  String pathWithGz = path + FTYP_GZ;
   if ( SPIFFS.exists( pathWithGz ) || SPIFFS.exists( path ) ) {
     if ( SPIFFS.exists( pathWithGz ) ) {
-      path += ".gz";
-      server.sendHeader( "Content-Encoding", "gzip" );
-	}
+      path += FTYP_GZ;
+      server.sendHeader( HEADER_CONT_ENC, "gzip" );
+    }
+    server.sendHeader( HEADER_ACCESS_CTR, "*" );
     File file = SPIFFS.open( path, "r" );
     size_t sent = server.streamFile( file, contentType );
     file.close();
@@ -218,7 +235,7 @@ void fileUpload() {
     if ( file ) {
       file.close();
       DEBUG_MSG( "fileUpload Size: %d bytes\n", upload.totalSize );
-      server.sendHeader( "Location", "/" );
+      server.sendHeader( HEADER_LOCATION, "/" );
       server.send( 303 );
     } else {
       server.send( 500, CONTENT_TYPE_TXT, FILE_NOT_CREATE );
@@ -244,6 +261,7 @@ void fileList( String path = "/" ) {
   }
 
   output += "]";
+  server.sendHeader( HEADER_ACCESS_CTR, "*" );
   server.send(200, CONTENT_TYPE_JSON, output);
 }
 
@@ -254,7 +272,7 @@ void fileDelete( String path = "/" ) {
   if ( !SPIFFS.exists( path ) )
     return server.send(404, CONTENT_TYPE_TXT, FILE_NOT_FOUND );
   SPIFFS.remove( path );
-  server.send( 200, CONTENT_TYPE_TXT, "");
+  server.send( 200, CONTENT_TYPE_TXT, "Deleted!");
 }
 
 void setup(void){

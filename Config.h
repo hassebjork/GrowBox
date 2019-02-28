@@ -52,7 +52,6 @@ public:
   bool       saved         = true;   // Configuration data saved true/false
   time_t     time;                   // Current time
   unsigned long logTime    = 0;      // Milliseconds between log records 0=off
-  unsigned long logMillis  = 0;      // Time of next log record in ms
   unsigned long updateTime = 1000;   // Milliseconds between Growbox.update
   unsigned long updMillis  = 0;      // Time to next run of Growbox.update in ms
   uint8_t    dimStep       = 10;     // Dimmer steps
