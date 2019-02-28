@@ -28,8 +28,12 @@ GrowBox::GrowBox() {
   oled.setScroll( false );
   oled.clear();
   
+#ifdef AM2320
+  uint8_t i = am2320get( temperature, humidity );
+#else
   uint8_t i = dht12get( temperature, humidity );
-
+#endif
+  
   millisUpd  = 0;
   analogWriteFreq( 50000 );
   analogWriteRange( PWM_MAX );
@@ -46,7 +50,11 @@ void GrowBox::update() {
   float t, h;
   int fan, led;
   
-  if ( dht12get( t, h ) == 0 ) {
+#ifdef AM2320
+  if ( am2320get( t, h ) == NO_ERROR ) {
+#else
+  if ( dht12get( t, h ) == NO_ERROR ) {
+#endif
     temperature = t * 0.4 + temperature * 0.6;
     humidity    = h * 0.4 + humidity    * 0.6;
 
@@ -185,7 +193,7 @@ uint8_t GrowBox::dht12get( float &t, float &h ) {
   Wire.beginTransmission( (uint8_t) I2C_DHT12 );
   Wire.write(0);
   if ( Wire.endTransmission() != 0 )
-    return 1; // Error connect
+    return ERROR_CONNECT;
   
   Wire.requestFrom( (uint8_t) I2C_DHT12, (uint8_t) 5 );
   for ( uint8_t i = 0; i < 5; i++ )
@@ -193,12 +201,66 @@ uint8_t GrowBox::dht12get( float &t, float &h ) {
   delay( 50 );
 
   if ( Wire.available() != 0 )
-    return 2; // Timeout
+    return ERROR_TIMEOUT;
 
   if ( buf[4]!=( buf[0] + buf[1] + buf[2] + buf[3] ) )
-    return 3; // Checksum error
+    return ERROR_CHECKSUM;
 
   h = ( buf[0] + (float) buf[1] / 10 );
   t = ( buf[2] + (float) buf[3] / 10 );
-  return 0;
+  return NO_ERROR;
 }
+
+#ifdef AM2320
+uint8_t GrowBox::am2320get( float &t, float &h ) {
+	uint8_t buf[8];
+	uint16_t crc;
+	// Wake sensor
+	Wire.beginTransmission( I2C_AM2320 );
+	Wire.write( 0x00 );
+	Wire.endTransmission();
+	delay( 10 );
+	
+	// Send read command
+	Wire.beginTransmission( I2C_AM2320 );	
+	Wire.write( 0x03 );		// Function code
+	Wire.write( 0x00 );		// Start address
+	Wire.write( 0x04 );		// No. bytes
+	if ( Wire.endTransmission() != 0 )
+		return ERROR_CONNECT;
+	delay( 2 );
+	
+	// Request 
+	Wire.requestFrom( I2C_AM2320, 0x08);
+	for ( uint8_t i = 0; i < 8; i++ )
+		buf[i] = Wire.read();
+	
+	crc = ( buf[7] << 8 ) + buf[6];
+	if ( crc == crc16( buf, 6 ) ) {
+		t = ( ( ( buf[4] & 0x7F ) << 8 ) + buf[5] ) / 10.0;
+		if ( buf[4] & 0x80 )
+			t = -t;
+		h = ( ( buf[2] << 8 ) + buf[3] ) / 10.0;
+		return NO_ERROR;
+	}
+    return ERROR_CHECKSUM;
+}
+
+uint16_t GrowBox::crc16( uint8_t *buf, uint8_t no ) {
+	uint8_t  i;
+	uint16_t crc = 0xFFFF;
+	
+	while ( no-- ) {
+		crc ^= *buf++;
+		for ( i = 0; i < 8; i++ ) {
+			if ( crc & 0x0001 ) {
+				crc >>= 1;
+				crc ^= 0xA001;
+			} else {
+				crc >>= 1;
+			}
+		}
+	}
+	return crc;
+}
+#endif
