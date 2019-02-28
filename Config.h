@@ -39,8 +39,9 @@ public:
   static const char *months[];
   static const char config_file[];
   enum ATTR {
-    NAME, TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF,
-    LOGTIME, UPDATETIME, DIMSTEP, attrNo
+    NAME, TEMPMAX, HUMIDMAX, TZ,
+	DST, LEDON, LEDOFF, LOGTIME,
+	UPDATETIME, DIMSTEP, attrNo		// Only json-file change
   };
                                 // Controller name
   char       name[10]      = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9
@@ -71,13 +72,13 @@ public:
   void timeRefresh();
   
   void toJson( char *c, int size );
-  void jsonAttribute( char *c, const char *a, int size );
+  static void jsonAttribute( char *c, const char *a, bool k, int size );
   void jsonAttribute( char *c, ATTR a, int size );
-  void toJson( char *c, const char* s, int size );
+  static void toJson( char *c, const char* s, int size );
   void toJson( char *c, ATTR a, const char* s, int size );
-  void toJson( char *c, int i, int size );
+  static void toJson( char *c, int i, int size );
   void toJson( char *c, ATTR a, int i, int size );
-  void toJson( char *c, float f, int size );
+  static void toJson( char *c, float f, int size );
   void toJson( char *c, ATTR a, float f, int size );
   void load();
   void save();

@@ -150,21 +150,18 @@ void GrowBox::dim( uint8_t no, int8_t  v ) {
 }
 
 void GrowBox::toJson( char *c, int size ) {
-  char buff[10];
-  strncpy( c, "{", size );
-  config.jsonAttribute( c, TEMP, size );
-  config.toJson( c, temperature, size );
-  strncat( c, ",", size ); 
-  config.jsonAttribute( c, HUMID, size );
-  config.toJson( c, humidity, size );
+  strncat( c, "{", size );
+  Config::jsonAttribute( c, TEMP, false, size );
+  Config::toJson( c, temperature, size );
+  Config::jsonAttribute( c, HUMID, true, size );
+  Config::toJson( c, humidity, size );
     
   for ( uint8_t i = 0; i < sizeof(fetPin); i++ ) {
-    strncat( c, ",\"", size );
-    strncat( c, fetName[i], size );
-    strncat( c, "\":[", size );
-	config.toJson( c, fetState[i], size );
+	Config::jsonAttribute( c, fetName[i], true, size );
+    strncat( c, "[", size );
+	Config::toJson( c, fetState[i], size );
     strncat( c, ",", size );
-	config.toJson( c, fetValue[i], size );
+	Config::toJson( c, fetValue[i], size );
     strncat( c, "]", size );
   }
   strncat( c, "}", size ); 

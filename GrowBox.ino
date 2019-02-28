@@ -108,7 +108,7 @@ void handleIO() {
       growBox.fetSet( i, atoi( server.arg( GrowBox::fetName[i] ).c_str() ) );
     }
   }
-  for ( uint8_t i = 0; i < Config::attrNo; i++ ) {
+  for ( uint8_t i = Config::NAME; i < Config::UPDATETIME; i++ ) {
     if ( server.hasArg( Config::attr[i] ) ) {
       config.set( i, server.arg( Config::attr[i] ).c_str() );
     }
@@ -128,18 +128,17 @@ void handleBoot() {
 
 void handleJSON() {
   char temp[350];
-  char buff[250] = "";
   handleIO();
 
-  strncpy( temp, "{\"ver\":0.5,\"chip\":", sizeof( temp ) );
-  itoa( ESP.getChipId(), buff, 10 );
-  strncat( temp, buff, sizeof( temp ) );
-  strncat( temp, ",\"config\":", sizeof( temp ) );
-  config.toJson( buff, sizeof( buff ) );
-  strncat( temp, buff, sizeof( temp ) );
-  strncat( temp, ",\"state\":", sizeof( temp ) );
-  growBox.toJson( buff, sizeof( buff ) );
-  strncat( temp, buff, sizeof( temp ) );
+  strncpy( temp, "{", sizeof( temp ) );
+  Config::jsonAttribute( temp, "ver", false, sizeof( temp ) );
+  Config::toJson( temp, __DATE__, sizeof( temp ) );
+  Config::jsonAttribute( temp, "chip", true, sizeof( temp ) );
+  Config::toJson( temp, (int)ESP.getChipId(), sizeof( temp ) );
+  Config::jsonAttribute( temp, "config", true, sizeof( temp ) );
+  config.toJson( temp, sizeof( temp ) );
+  Config::jsonAttribute( temp, "state", true, sizeof( temp ) );
+  growBox.toJson( temp, sizeof( temp ) );
   strncat( temp, "}", sizeof( temp ) );
   
   server.sendHeader( "Access-Control-Allow-Origin", "*" );
@@ -234,16 +233,13 @@ void fileList( String path = "/" ) {
   while ( dir.next() ) {
     File entry = dir.openFile( "r" );
     if ( output != "[" ) {
-      output += ',';
+      output += ",\n";
     }
-    bool isDir = false;
-    output += "{\"type\":\"";
-    output += ( isDir ) ? "dir" : "file";
-    output += "\",\"name\":\"";
-    output += String( entry.name() ).substring( 1 );
-    output += "\",\"size\":\"";
+    output += "[\"";
+    output += entry.name();
+    output += "\",";
     output += String( entry.size() );
-    output += "\"}";
+    output += "]";
     entry.close();
   }
 

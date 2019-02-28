@@ -185,8 +185,7 @@ void Config::timeRefresh() {
 }
 
 void Config::toJson( char *c, int size ) {
-  char buff[10];
-  strncpy( c, "{", size );
+  strncat( c, "{", size );
   toJson( c, NAME, name, size );
   toJson( c, HUMIDMAX, humidMax, size );
   toJson( c, TEMPMAX, tempMax, size );
@@ -201,12 +200,11 @@ void Config::toJson( char *c, int size ) {
 //   DEBUG_MSG("Config::toJson: %d bytes %d buff\n", strlen( c ), size );
 }
 void Config::jsonAttribute( char *c, ATTR a, int size ) {
-	if ( a != NAME )
-		strncat( c, ",", size );
-	toJson( c, attr[a], size );
-	strncat( c, ":", size );
+	jsonAttribute( c, attr[a], a != NAME, size );
 }
-void Config::jsonAttribute( char *c, const char *a, int size ) {
+void Config::jsonAttribute( char *c, const char *a, bool k, int size ) {
+	if ( k )
+		strncat( c, ",", size );
 	toJson( c, a, size );
 	strncat( c, ":", size );
 }
