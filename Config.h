@@ -36,6 +36,7 @@ typedef struct {
 class Config {
 public:
   static const char *attr[];
+  static const char *months[];
   static const char config_file[];
   enum ATTR {
     NAME, TEMPMAX, HUMIDMAX, TZ, DST, LEDON, LEDOFF,
@@ -63,7 +64,12 @@ public:
   void set( uint8_t d, const char *c );
   bool setAlarm( Alarm &a, const char *c );
   bool setBool( bool &b, const char *c );
-
+  
+  time_t today( uint8_t hr, uint8_t min, uint8_t sec );
+  time_t today( uint16_t hrmin );
+  bool checkDst();
+  void timeRefresh();
+  
   void toJson( char *c, int size );
   void jsonAttribute( char *c, const char *a, int size );
   void jsonAttribute( char *c, ATTR a, int size );

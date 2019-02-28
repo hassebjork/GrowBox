@@ -1,4 +1,20 @@
 #include "Config.h"
+const char month_jan[] PROGMEM = "Jan";
+const char month_feb[] PROGMEM = "Feb";
+const char month_mar[] PROGMEM = "Mar";
+const char month_apr[] PROGMEM = "Apr";
+const char month_may[] PROGMEM = "May";
+const char month_jun[] PROGMEM = "Jun";
+const char month_jul[] PROGMEM = "Jul";
+const char month_aug[] PROGMEM = "Aug";
+const char month_sep[] PROGMEM = "Sep";
+const char month_oct[] PROGMEM = "Oct";
+const char month_nov[] PROGMEM = "Nov";
+const char month_dec[] PROGMEM = "Dec";
+const char* Config::months[] PROGMEM = {
+	month_jan, month_feb, month_mar, month_apr, month_may, month_jun,
+	month_jul, month_aug, month_sep, month_oct, month_nov, month_dec
+};
 
 const char attr_name[]       PROGMEM = "name";
 const char attr_tempMax[]    PROGMEM = "tempMax";
@@ -11,9 +27,9 @@ const char attr_logTime[]    PROGMEM = "logTime";
 const char attr_updateTime[] PROGMEM = "updateTime";
 const char attr_dimStep[]    PROGMEM = "dimStep";
 const char* Config::attr[]   PROGMEM = {
-  attr_name, attr_tempMax, attr_humidMax, attr_tz, attr_dst,
-  attr_ledOn, attr_ledOff, attr_logTime, attr_updateTime,
-  attr_dimStep
+  attr_name, attr_tempMax, attr_humidMax, attr_tz,
+  attr_dst, attr_ledOn, attr_ledOff, attr_logTime,
+  attr_updateTime, attr_dimStep
 };
 
 const char Config::config_file[] PROGMEM = "/growbox.json";
@@ -132,6 +148,42 @@ bool Config::setAlarm( Alarm &a, const char *c ) {
   return ( hour == a.hour && minute == a.minute );
 }
 
+time_t Config::today( uint16_t hrmin = 0 ) {
+	return today( (uint8_t) hrmin / 100, (uint8_t) hrmin % 100, 0 );
+}
+
+time_t Config::today( uint8_t hr = 0, uint8_t min = 0, uint8_t sec = 0 ) {
+	tmElements_t tm;
+	tm.Year   = year( time );
+	tm.Month  = month( time );
+	tm.Day    = day( time );
+	tm.Hour   = hr;
+	tm.Minute = min;
+	tm.Second = sec;
+	return makeTime( tm );
+}
+
+bool Config::checkDst() {
+  if ( !dst ) 
+    return false;
+  time_t t = now() + tz * SECS_PER_HOUR;
+  if ( month(t)  < 3 || month(t) > 10 )       // Jan, Feb, Nov, Dec 
+    return false;
+  if ( month(t)  > 3 && month(t) < 10 )       // Apr, Jun; Jul, Aug, Sep 
+    return true;
+  if ( month(t) ==  3 && ( hour(t) + 24 * day(t) ) >= ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 4 ) % 7 ) ) 
+    || month(t) == 10 && ( hour(t) + 24 * day(t) ) <  ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 1 ) % 7 ) ) )
+    return true;
+  else
+    return false;
+}
+
+void Config::timeRefresh() {
+	time = now() 
+		+ ( tz * SECS_PER_HOUR )
+		+ ( checkDst() ? SECS_PER_HOUR : 0 );
+}
+
 void Config::toJson( char *c, int size ) {
   char buff[10];
   strncpy( c, "{", size );
@@ -240,3 +292,4 @@ void Config::save() {
   saved = true;
   DEBUG_MSG( "Config::save()\n" );  
 }
+

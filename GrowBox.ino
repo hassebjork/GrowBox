@@ -50,7 +50,6 @@ const char FILE_NOT_FOUND[]    = "404: Not Found";
 
 const char * headerKeys[]      = { "date" };
 const size_t numberOfHeaders   = 1;
-const char * _months[]         = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }; 
 
 // WiFiManager
 #include <ESP8266WiFi.h>          // https://github.com/esp8266/Arduino
@@ -82,15 +81,14 @@ time_t syncHTTP() {
       uint8_t i;
       String headerDate = http.header( headerKeys[0] );
       const char * str  = headerDate.c_str();
-      const char * mo   = headerDate.substring( 8, 11 ).c_str();
-      
+	  
       for ( i = 0; i < 12; i++ ) {
-        if ( strncmp( _months[i], mo, 3 ) == 0 )
+        if ( strncmp_P( Config::months[i], str + 8, 3 ) == 0 )
           break;
       }
       
       tm.Year   = ( str[14] - '0' ) * 10 + ( str[15] - '0' ) + 30;
-      tm.Month  = i;
+      tm.Month  = i + 1;
       tm.Day    = ( str[5]  - '0' ) * 10 + ( str[6]  - '0' );
       tm.Hour   = ( str[17] - '0' ) * 10 + ( str[18] - '0' );
       tm.Minute = ( str[20] - '0' ) * 10 + ( str[21] - '0' );
@@ -102,21 +100,6 @@ time_t syncHTTP() {
   if ( millis() < 50000 )
     setTime( 0, 0, 0, 1, 1, 2000 );
   return now();
-}
-
-bool checkDst() {
-  if ( !config.dst ) 
-    return false;
-  time_t t = now() + config.tz * SECS_PER_HOUR;
-  if ( month(t)  < 3 || month(t) > 10 )       // Jan, Feb, Nov, Dec 
-    return false;
-  if ( month(t)  > 3 && month(t) < 10 )       // Apr, Jun; Jul, Aug, Sep 
-    return true;
-  if ( month(t) ==  3 && ( hour(t) + 24 * day(t) ) >= ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 4 ) % 7 ) ) 
-    || month(t) == 10 && ( hour(t) + 24 * day(t) ) <  ( 3 +  24 * ( 31 - ( 5 * year(t) / 4 + 1 ) % 7 ) ) )
-    return true;
-  else
-    return false;
 }
 
 void handleIO() {
@@ -199,6 +182,7 @@ String getContentType( String filename ) {
   else if ( filename.endsWith( ".dat"  ) ) return "application/octet-stream";
   return CONTENT_TYPE_TXT;
 }
+
 bool fileDownload( String path ) {
   DEBUG_MSG( "fileDownload: %s\n", path.c_str() );
   if ( !path.startsWith( "/" ) )
@@ -333,7 +317,7 @@ void setup(void){
 }
 
 void loop(void){
-  config.time = now() + config.tz * SECS_PER_HOUR + ( checkDst() ? SECS_PER_HOUR : 0 );
+  config.timeRefresh();
 
   if ( second( config.time ) == 0 ) {
     if ( hour( config.time ) == config.ledOn.hour && minute( config.time ) == config.ledOn.minute )
