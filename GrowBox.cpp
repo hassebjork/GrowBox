@@ -59,13 +59,7 @@ void GrowBox::update() {
     humidity    = h * 0.4 + humidity    * 0.6;
 
     // Update log data
-    logTemp    += t;
-    logHumid   += h;
-    if ( t > maxTemp  ) maxTemp  = t;
-    if ( t < minTemp  ) minTemp  = t;
-    if ( h > maxHumid ) maxHumid = t;
-    if ( h < minHumid ) minHumid = t;
-    logCount++;
+	log.update( t, h );
   }
   
   // Temp max + 2C
@@ -87,24 +81,6 @@ void GrowBox::update() {
       dim( FAN );
     }
   }
-}
-
-void GrowBox::logRecord() {
-  if ( logCount > 0 ) {
-    logTemp  = logTemp  / logCount;
-    logHumid = logHumid / logCount;
-
-    // Log function here
-  }
-
-  // Reset log values
-  logTemp  = 0.0;
-  maxTemp  = -300.0;
-  minTemp  = 400;
-  logHumid = 0.0;
-  maxHumid = 0.0;
-  minHumid = 100.0;
-  logCount = 0;
 }
 
 void GrowBox::setValue( uint8_t no, uint16_t value ) {

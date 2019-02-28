@@ -22,6 +22,7 @@
 #include "SSD1306Ascii.h"       // https://github.com/greiman/SSD1306Ascii
 #include "SSD1306AsciiWire.h"   // https://github.com/greiman/SSD1306Ascii
 #include "Config.h"             // Configuration class for local storage
+#include "Log.h"                // Log temperature & humidity
 extern Config config;
 
 class GrowBox {
@@ -44,18 +45,10 @@ public:
   float    humidity;         // Air humidity
   float    temperature;      // Air temperature
   unsigned long millisUpd;   // Last update of temp/humid
-
-  float    logTemp      = 0.0;
-  float    maxTemp      = -300.0;
-  float    minTemp      = 400.0;
-  float    logHumid     = 0.0;
-  float    maxHumid     = 0.0;
-  float    minHumid     = 100.0;
-  unsigned int logCount = 0;
+  Log      log;
   
   GrowBox();
   void     update();
-  void     logRecord();
   void     toJson( char *c, int size );
   void     fetSet( uint8_t no, uint16_t value );
   uint16_t fetStatus( uint8_t no );

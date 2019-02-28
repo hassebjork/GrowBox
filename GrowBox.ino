@@ -347,10 +347,6 @@ void loop(void){
     growBox.oled.printf( "% 7.1fC% 7.1f%% ", growBox.temperature, growBox.humidity );
     growBox.oled.setCursor( 0, 3 );
   }
-  if ( config.logTime > 0 && millis() - config.logMillis >= config.logTime ) {
-    growBox.logRecord();
-  }
-
 //  wifi_set_sleep_type( LIGHT_SLEEP_T );
   delay( 400 );
 }
