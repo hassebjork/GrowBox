@@ -255,16 +255,16 @@ void Config::load() {
   } else {
     JsonObject root = doc.as<JsonObject>();
     set( NAME,       root[attr[NAME]]       | "DefName" );
-    set( HUMIDMAX,   root[attr[HUMIDMAX]]   | "92" );
+    set( HUMIDMAX,   root[attr[HUMIDMAX]]   | "85" );
     set( TEMPMAX,    root[attr[TEMPMAX]]    | "28.0" );
     set( TZ,         root[attr[TZ]]         | "1"  );
     set( DST,        root[attr[DST]]        | "1"  );
-    set( LOGTIME,    root[attr[LOGTIME]]    | "0"  );
+    set( LOGTIME,    root[attr[LOGTIME]]    | "3600"  );
     set( UPDATETIME, root[attr[UPDATETIME]] | "1"  );
     set( DIMSTEP,    root[attr[DIMSTEP]]    | "20" );
-    itoa( root[attr[LEDON]  ] | 2560, c, 10 );
+    itoa( root[attr[LEDON]  ] | 600, c, 10 );
     set( LEDON,    c );
-    itoa( root[attr[LEDOFF] ] | 2560, c, 10 );
+    itoa( root[attr[LEDOFF] ] | 2000, c, 10 );
     set( LEDOFF,   c );
   }
   f.close();

@@ -45,13 +45,13 @@ public:
   };
                                 // Controller name
   char       name[10]      = {'D','e','f','N','a','m','e','\0' }; // Bugfix for gcc 4.9
-  uint8_t    humidMax      = 92;     // Humidity High
+  uint8_t    humidMax      = 85;     // Humidity High
   float      tempMax       = 28.0;   // Temperature High
   int8_t     tz            = 1;      // TimeZone hours
   bool       dst           = true;   // Daylight Saving Time
   bool       saved         = true;   // Configuration data saved true/false
   time_t     time;                   // Current time
-  unsigned long logTime    = 0;      // Milliseconds between log records 0=off
+  unsigned long logTime    = 3600;   // Milliseconds between log records 0=off
   unsigned long updateTime = 1000;   // Milliseconds between Growbox.update
   unsigned long updMillis  = 0;      // Time to next run of Growbox.update in ms
   uint8_t    dimStep       = 10;     // Dimmer steps

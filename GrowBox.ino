@@ -7,10 +7,6 @@
  * 
  * Logging 
  *   Save data to server 
- *   Save log to SPIFFS
- * 
- * Files
- *   File browser
  * 
  * Integration
  *   iframe to database with growbox contents
@@ -61,7 +57,7 @@ const char FILE_FILE[]         = "file";
 const char FILE_DIR[]          = "dir";
 const char FILE_DEL[]          = "del";
 const char FILE_FAVICON[]      = "/favicon.ico";
-const char FILE_NOT_CREATE[]   = "500: couldn't create file";
+const char FILE_NOT_CREATE[]   = "500: Couldn't create file";
 const char FILE_NOT_FOUND[]    = "404: Not Found";
 
 const char * headerKeys[]      = { "date" };
@@ -332,13 +328,24 @@ void setup(void){
 
 void loop(void){
   config.timeRefresh();
-
-  if ( second( config.time ) == 0 ) {
-    if ( hour( config.time ) == config.ledOn.hour && minute( config.time ) == config.ledOn.minute )
+  
+  if ( millis() < 5000 || second( config.time ) == 0 ) {
+    if ( ( hour( config.time ) > config.ledOn.hour 
+		|| ( hour( config.time ) == config.ledOn.hour 
+		&& minute( config.time ) >= config.ledOn.minute ) )
+		&& ( hour( config.time ) < config.ledOff.hour 
+		|| ( hour( config.time ) == config.ledOff.hour 
+		&& minute( config.time ) < config.ledOff.minute ) ) )
       growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
-    if ( hour( config.time ) == config.ledOff.hour && minute( config.time ) == config.ledOff.minute )
+    else
       growBox.fetSet( GrowBox::LED, 0 );
   }
+//   if ( second( config.time ) == 0 ) {
+//     if ( hour( config.time ) == config.ledOn.hour && minute( config.time ) == config.ledOn.minute )
+//       growBox.fetSet( GrowBox::LED, GrowBox::PWM_MAX );
+//     if ( hour( config.time ) == config.ledOff.hour && minute( config.time ) == config.ledOff.minute )
+//       growBox.fetSet( GrowBox::LED, 0 );
+//   }
   
   if ( millis() - config.updMillis >= config.updateTime ) {
     config.updMillis += config.updateTime;
