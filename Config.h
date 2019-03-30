@@ -35,8 +35,7 @@ class Config: public JsonListener {
 	static const char config_old[];
 	enum ATTR {
 		NAME, TEMPMAX, HUMIDMAX, TZ,
-		DST, LEDON, LEDOFF, LOGTIME,
-		UPDATETIME, DIMSTEP, attrNo	    // Change by json-file only
+		DST, LEDON, LEDOFF, LOGTIME, attrNo
 	};
                                         // Controller name
 	char       name[10]      = {'G','r','o','w','B','o','x','\0' }; // Bugfix for gcc 4.9
@@ -47,9 +46,7 @@ class Config: public JsonListener {
 	bool       saved         = true;    // Configuration data saved true/false
 	time_t     time;                    // Current time
 	unsigned long logTime    = 3600000; // Milliseconds between log records 0=off
-	unsigned long updateTime = 1000;    // Milliseconds between Growbox.update
 	unsigned long updMillis  = 0;       // Time to next run of Growbox.update in ms
-	uint8_t    dimStep       = 10;      // Dimmer steps
 	String     _key          = "";	    // JSON key:value name
 	
 	Alarm      ledOn;                   // Alarm time led on

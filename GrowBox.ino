@@ -11,6 +11,7 @@
  * Integration
  *   iframe to database with growbox contents
  */
+#define UPD_TIME 1000
 
 #include <pgmspace.h>           // PROGMEM functions
 #include <string.h>             // strncat etc
@@ -120,7 +121,7 @@ void handleIO() {
       growBox.fetSet( i, atoi( server.arg( GrowBox::fetName[i] ).c_str() ) );
     }
   }
-  for ( uint8_t i = Config::NAME; i < Config::UPDATETIME; i++ ) {
+  for ( uint8_t i = Config::NAME; i < Config::attrNo; i++ ) {
     if ( server.hasArg( Config::attr[i] ) ) {
       config.set( i, server.arg( Config::attr[i] ).c_str() );
     }
@@ -347,8 +348,8 @@ void loop(void){
 //       growBox.fetSet( GrowBox::LED, 0 );
 //   }
   
-  if ( millis() - config.updMillis >= config.updateTime ) {
-    config.updMillis += config.updateTime;
+  if ( millis() - config.updMillis >= UPD_TIME ) {
+    config.updMillis += UPD_TIME;
     growBox.update();
     
     // Update display

@@ -18,6 +18,8 @@
 #define I2C_DHT12 0x5C
 #define I2C_AM2320 0xB8
 
+#define DIM_STEP 10
+
 #include <Wire.h>
 #include "SSD1306Ascii.h"       // https://github.com/greiman/SSD1306Ascii
 #include "SSD1306AsciiWire.h"   // https://github.com/greiman/SSD1306Ascii

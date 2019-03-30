@@ -24,12 +24,9 @@ const char attr_dst[]        PROGMEM = "dst";
 const char attr_ledOn[]      PROGMEM = "ledOn";
 const char attr_ledOff[]     PROGMEM = "ledOff";
 const char attr_logTime[]    PROGMEM = "logTime";
-const char attr_updateTime[] PROGMEM = "updateTime";
-const char attr_dimStep[]    PROGMEM = "dimStep";
 const char* Config::attr[]   PROGMEM = {
 	attr_name, attr_tempMax, attr_humidMax, attr_tz,
-	attr_dst, attr_ledOn, attr_ledOff, attr_logTime,
-	attr_updateTime, attr_dimStep
+	attr_dst, attr_ledOn, attr_ledOff, attr_logTime
 };
 
 const char Config::config_file[] PROGMEM = "/growbox.json";
@@ -112,22 +109,6 @@ void Config::set( uint8_t d, const char *c ) {
 		}
 		break;
 		
-		case UPDATETIME: {  // Set in seconds
-			unsigned long i = atol( c ) * 1000;
-			saved = ( i == updateTime );
-			updateTime = i;
-		}
-		break;
-		
-		case DIMSTEP: {
-			uint8_t i = atoi( c );
-			if ( i <= 200 ) {
-				saved = ( i == dimStep );
-				dimStep = i;
-			}
-		}
-		break;
-		
 	}
 }
 
@@ -201,8 +182,6 @@ void Config::toJson( char *c, int size ) {
 	toJson( c, LEDON, (uint16_t)(ledOn.hour * 100) + ledOn.minute, size );
 	toJson( c, LEDOFF, (uint16_t)(ledOff.hour * 100) + ledOff.minute, size );
 	toJson( c, LOGTIME, (int)( logTime / 1000 ), size );
-	toJson( c, UPDATETIME, (int)( updateTime / 1000 ), size );
-	toJson( c, DIMSTEP, dimStep, size );
 	strncat( c, "}", size );
 }
 void Config::jsonAttribute( char *c, ATTR a, int size ) {
