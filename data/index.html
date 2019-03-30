@@ -1,7 +1,7 @@
 <html lang="en">
 	<head>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAgMAAAAOFJJnAAAADFBMVEUAAAAAgADUVQD/ZgCSsVQCAAAAAXRSTlMAQObYZgAAAHRJREFUGNNtzTEOgCAMheE2xsW9l/AS4OCOSd/9HA2n8GZY2gEHfpYvTVOIKJPHgsAKFIcAOgBkkgtgQG3HXgfjAAcUZwdBxfaKwZdyv8ga13VVOIiLlPguU8SOmMxbUmrp7WjWD9NqrY9jn+F2bD4J3AOjDy5FLxVhu+jNAAAAAElFTkSuQmCC" rel="icon" type="image/png" /> 
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAgMAAAAOFJJnAAAADFBMVEUAAAAAgADUVQD/ZgCSsVQCAAAAAXRSTlMAQObYZgAAAHRJREFUGNNtzTEOgCAMheE2xsW9l/AS4OCOSd/9HA2n8GZY2gEHfpYvTVOIKJPHgsAKFIcAOgBkkgtgQG3HXgfjAAcUZwdBxfaKwZdyv8ga13VVOIiLlPguU8SOmMxbUmrp7WjWD9NqrY9jn+F2bD4J3AOjDy5FLxVhu+jNAAAAAElFTkSuQmCC" rel="icon" type="image/png"> 
 		<title>GrowBox</title>
 		<style>
 @import url('https://fonts.googleapis.com/css?family=Luckiest+Guy');
@@ -35,6 +35,21 @@ div.dbg {
 	line-height:1.5em;
 	font-size: .8em;
 }
+#st {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 12pt;
+	margin-top: -15px;
+}
+.st {
+	animation: fadeinout 4s linear forwards;
+	opacity: 0;
+}
+@keyframes fadeinout {
+  25% { opacity: 1; }
+}
+.error {
+	background-color:#f00;
+}
 #spin {
 	position:absolute;
 	left: 5%;
@@ -58,8 +73,13 @@ div.dth svg {
 	top:10%;
 }
 /* Temp / Humid top/bottom pane */
-div.dash { 
+div.dt { 
 	height:49%;
+	fill:#ff7070;
+}
+div.dh { 
+	height:49%;
+	fill:#6083ff; 
 }
 
 #t, #h { 
@@ -116,8 +136,8 @@ div.dash {
 /* Form, button */
 .dfrm { 
 	width:300px;
-	height:100px;
 	top: 384px;
+	padding-bottom: 15px;
 }
 /*.dfrm a {
 	float:left;
@@ -126,6 +146,36 @@ div.dash {
 	height:60px;
 	display:inline-block;
 	fill:#c87137;
+}
+.sys {
+	font-size: 12pt;
+	text-align: left;
+	margin: 10px 10px 10px 10px;
+	max-height: 150px;
+	overflow-y: auto;
+}
+.sys a {
+	color: #e0e0e0;
+	text-decoration: none;
+}
+.sys table {
+	color: #e0e0e0;
+	background-color:#444;
+	margin-top: 0px auto 0px auto;
+	font-family: Arial, Helvetica, sans-serif;
+}
+.sys th {
+	text-align: center;
+	background-color:#333;
+}
+.l {
+	text-align: left;
+}
+.r {
+	text-align: right;
+}
+.c {
+	text-align: center;
 }
 	</style>
 	<script type="text/javascript">
@@ -136,6 +186,10 @@ div.dash {
 
 window.addEventListener('DOMContentLoaded', function() {
 	GB.i();
+}, false );
+document.addEventListener('visibilitychange', function() {
+	if ( !document.hidden )
+		GB.r();
 }, false );
 
 function status( txt, className ) {
@@ -153,10 +207,13 @@ var GB = GB || {				// GrowBox
 	t: 0,						// Delay
 	m: null,					// Timer
 	d: null,					// Data
+	hi: null,					// History Data
+	mo: [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ],
 	
 	i: function() {				// Init
 		GB.h    = {};
 		GB.h.ti = $("ti");		// Title
+		GB.h.st = $("st");		// Status & error
 		GB.h.s  = $("spin");	// Spinner
 		GB.h.t  = $("t");		// Temperature
 		GB.h.h  = $("h");		// Humidity
@@ -166,7 +223,8 @@ var GB = GB || {				// GrowBox
 		GB.h.f  = $("fan");		// Fan input
 		GB.h.al = $("aled");	// Led actual
 		GB.h.af = $("afan");	// Fan actual
-		GB.a( "js", GB.s );		// 
+		GB.h.sy = $("sys");		// File system
+		GB.r();
 		GB.m = setInterval( GB.r, 60000 );
 	},
 	r: function() {				// Refresh
@@ -177,25 +235,35 @@ var GB = GB || {				// GrowBox
 		if ( t > GB.t + 500 ) {
 			GB.h.s.style.display = "block";
 			GB.t = t;
-			GB.aj( "http://growbox3.local/" + u, f );
+			GB.aj( u, f );
+// 			GB.aj( "http://growbox5.local/" + u, f );
 		}
 	},
 	aj: function(u,f,o) {			// Ajax
 		var r = new XMLHttpRequest();
 		r.onreadystatechange = function() {
 			if ( r.readyState == 4 ) {
+				console.log( r.status );
+				GB.h.s.style.display = "none";
 				if ( r.status == 0 )
-					status( "Server not responding!", "error" );
+					GB.st( "Server not responding!", "error" );
 				else if ( r.status != 200 )
-					status( "Error: " + r.status, "error" );
+					GB.st( "Error: " + r.status, "error" );
 				else {
-					GB.h.s.style.display = "none";
 					f( r, o );
 				}
 			}
 		}
 		r.open( "GET", u, true );
 		r.send();
+	},
+	st: function( t, c ) {
+		var s = document.createElement( "div" );
+		s.className = "st";
+		s.appendChild( document.createTextNode( t ) );
+		GB.h.st.appendChild( s );
+		s.classList.add( c || "" );
+		setTimeout( function( n ) { return function() { n.parentNode.removeChild( n ); }; }( s ), 4000 );
 	},
 	s: function(r) {			// Show
 		GB.h.s.style.display = "none";
@@ -220,6 +288,71 @@ var GB = GB || {				// GrowBox
 	up: function(r) {			// Execute up
 		GB.a( "js?" + r + "=" + ( GB.d.config[r] + 1 ), GB.s );
 	},
+	ff: function() {			// File list fetch
+		if ( GB.h.sy.innerHTML == "" )
+			GB.a( "file?dir=/", GB.fs );
+		else
+			GB.h.sy.innerHTML = "";
+	},
+	fs: function(r) {			// File show
+		var d = JSON.parse( r.responseText );
+		var s = "<table>";
+		for ( var i = 0; i < d.length; i++ ) {
+			if ( d[i][0] != "/" )
+				s += "<tr><td class=\"l\"><a href=\"file?file=" + d[i][0] + "\">" 
+					+ d[i][0] + "</a></td>"
+					+ "<td class=\"r\">" + d[i][1] + "</td></tr>";
+		}
+		GB.h.sy.innerHTML = s + "</table>";
+	},
+	lf: function() {			// Fetch Log
+		if ( GB.h.sy.innerHTML == "" ) {
+			var d = new Date();
+			GB.a( "file?file=/log" + (d.getUTCFullYear()-2000) 
+				+ GB.mo[d.getUTCMonth()] + ".json", GB.ls );
+		} else
+			GB.h.sy.innerHTML = "";
+	},
+	ls: function(r) {			// Fetch Log
+		var v = new Date();
+		var u = 0;
+		var h = "<table class=\"r\">";
+		var d = JSON.parse( "{\"v\":[" + r.responseText + "]}" );
+		var p = { d: [], t:[], h:[], tx:[], tn:[], hx:[], hn:[], 
+			tmax:-200, tmin:200, hmax:-1, hmin:101 };
+		for ( var i = 0; i < d.v.length; i++ ) {
+			v.setUTCFullYear( 2000 + Math.round( d.v[i][0] / 10000 ),
+				Math.round( d.v[i][0] / 100 ) % 100 - 1,
+				d.v[i][0] % 100 );
+			v.setUTCHours( Math.round( d.v[i][1] / 100 ),
+				d.v[i][1] % 100 );
+			p.d.push( v );
+			p.t.push(  d.v[i][2][1] );
+			p.h.push(  d.v[i][3][1] );
+			p.tn.push( d.v[i][2][0] );
+			p.hn.push( d.v[i][3][0] );
+			p.tx.push( d.v[i][2][3] );
+			p.hx.push( d.v[i][3][3] );
+			p.tmin = d.v[i][2][0] < p.tmin ? d.v[i][2][0] : p.tmin;
+			p.tmax = d.v[i][2][2] > p.tmax ? d.v[i][2][2] : p.tmax;
+			p.hmin = d.v[i][3][0] < p.hmin ? d.v[i][3][0] : p.hmin;
+			p.hmax = d.v[i][3][2] > p.hmax ? d.v[i][3][2] : p.hmax;
+			if ( v.getDate() + v.getMonth() * 100 != u ) {
+				u = v.getDate() + v.getMonth() * 100;
+				h += "<tr class=\"c\"><th colspan=\"3\">" + v.getDate() + " " 
+					+ GB.mo[ v.getMonth() ] + " "
+					+ v.getFullYear() + "</th></tr>"
+					+ "<tr class=\"l\"><td>Hour</td><td>Temp</td><td>Humid</td></tr>";
+			}
+			h += "<tr>"
+				+ "<td class=\"l\">" + ( v.getHours() < 10 ? "0" : "" ) + v.getHours() + "</td>"
+				+ "<td title=\"(" + d.v[i][2][0] + "-" + d.v[i][2][2] + ")\">" + d.v[i][2][1] + "&deg;C</td>"
+				+ "<td title=\""+ d.v[i][3][0] + "-" + d.v[i][3][2] + ")\">" + d.v[i][3][1] + "%</td>"
+				+ "</tr>";
+		}
+		GB.hi = p;
+		GB.h.sy.innerHTML = h + "</table>";
+	},
 }
 	</script>
 	</head>
@@ -227,6 +360,7 @@ var GB = GB || {				// GrowBox
 	
 	<div class="dbg dti">
 		<div id="ti">GrowBox</div>
+		<div id="st"></div>
 		<svg id="spin" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 24">
 		<circle cx="4" cy="4" r="4">
 			<animate attributeName="r" begin="0" dur="1.2s" repeatCount="indefinite" values="4; 1; 1; 1"/>
@@ -240,8 +374,8 @@ var GB = GB || {				// GrowBox
 		</svg>
 	</div>
 	<div class="dbg dth">
-		<div class="dash">
-			<svg style="fill:#ffaaaa" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" class="icon"><path d="M125 14c-20 0-36 15-37 35v98a53 53 0 0 0-15 37c0 29 24 53 53 53s53-24 53-53a53 53 0 0 0-15-37v-98c-1-20-18-35-37-35zm0 16c11 0 23 8 21 28h-30v15h15v15h-15v15h15v15h-15v15h15v15h-15v13c-8 2-14 12-15 20h-10c-0-13 3-22 14-27v-109c1-9 10-14 19-15 0 0 1 0 1 0z"/></svg>
+		<div class="dt">
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" class="icon"><path d="M125 14c-20 0-36 15-37 35v98a53 53 0 0 0-15 37c0 29 24 53 53 53s53-24 53-53a53 53 0 0 0-15-37v-98c-1-20-18-35-37-35zm0 16c11 0 23 8 21 28h-30v15h15v15h-15v15h15v15h-15v15h15v15h-15v13c-8 2-14 12-15 20h-10c-0-13 3-22 14-27v-109c1-9 10-14 19-15 0 0 1 0 1 0z"/></svg>
 			<div id="t">---&deg;C</div>
 			<div class="mimx">
 				<div class="up" title="Increase temperature limit" onclick="GB.up('tempMax')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 115 115"><path d="M16 104c-8 -2-12 -9-9 -16l44-77c4-6 13-7 17 0l44 77c4 7-3 15-9 16z"/></svg></div>
@@ -250,8 +384,8 @@ var GB = GB || {				// GrowBox
 			</div>
 		</div>
 		<div style="background-color:#fff;height:5px;width:80%;margin:auto;"></div>
-		<div class="dash">
-			<svg style="fill:#80b3ff" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" class="icon"><path d="M125 12c-22 0-14 38-28 57-12 16-43 57-42 88 1 31 19 71 71 71s70-40 71-71c1-31-31-72-42-88-15-20-7-57-28-57zm40 154c11 7-4 41-25 34-8-5 6-6 15-14 9-8 5-24 10-20z"/></svg>
+		<div class="dh">
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" class="icon"><path d="M125 12c-22 0-14 38-28 57-12 16-43 57-42 88 1 31 19 71 71 71s70-40 71-71c1-31-31-72-42-88-15-20-7-57-28-57zm40 154c11 7-4 41-25 34-8-5 6-6 15-14 9-8 5-24 10-20z"/></svg>
 			<div id="h">---%</div>
 			<div class="mimx">
 				<div class="up" title="Increase humidity limit" onclick="GB.up('humidMax')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 115 115"><path d="M16 104c-8 -2-12 -9-9 -16l44-77c4-6 13-7 17 0l44 77c4 7-3 15-9 16z"/></svg></div>
@@ -262,20 +396,31 @@ var GB = GB || {				// GrowBox
 	</div>
 	
 	<div class="dbg dled">
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250"><path d="M158 195v-13c0-6 8-1 9-29 1-25 31-37 29-81-2-44-38-67-72-67-33 0-70 23 -72 67-2 44 28 56 29 81 1 29 9 23 9 29v13zm-68 5v11h68v-11zm0 16v11h68v-11zm15 16v11h38v-11z"/></svg>
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250">
+			<path d="M158 182c0-6 8-1 9-29 1-25 31-37 29-81-2-44-38-67-72-67-33 0-70 23 -72 67-2 44 28 56 29 81 1 29 9 23 9 29z" fill="#ffcc00"/>
+			<path d="M158 195v-13h-68v13zm-68 5v11h68v-11zm0 16v11h68v-11zm15 16v11h38v-11z"/>
+		</svg>
 		<div><input type="range" id="led" min="0" max="1023" value="0" oninput="GB.n(this)"/></div>
 		<div id="aled">-%</div>
 	</div>
 	<div class="dbg dfan">
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250"><path d="M237 147c-6-54-56-39-83-30 11 20 1 43-20 50 13 16 3 50 8 57 16 30 101-23 95-77zm-183 79c50 22 62-28 68-57-23-1-38-21-34-42-20 3-45-22-53-21-34-1-30 99 19 120zm23-198c-44 32-6 68 16 87 12-20 37-22 53 -8 7-19 42-28 45-36 18-29-71-76-115-42zM122 107A27 27 0 0 0 95 135a27 27 0 0 0 27 27 27 27 0 0 0 27-27 27 27 0 0 0-27-28zm0 14a14 14 0 0 1 14 14 14 14 0 0 1-14 14 14 14 0 0 1-14-14 14 14 0 0 1 14-14z"/></svg>
+		<svg viewBox="0 0 250 250">
+			<path d="M239 137c-6-54-56-39-84-30 11 20 1 43-20 51 13 16 3 50 8 57 16 30 101-23 96-77zM58 218c50 22 62-29 68-58-23 0-38-21-34-43-20 3-45-22-53-22-34-1-31 99 19 123zM78 20c-44 32-6 68 16 88 12-20 37-22 54-8 7-19 42-28 45-35 18-29-70-76-115-45zm47 78a27 27 0 0 0-27 27 27 27 0 0 0 27 27 27 27 0 0 0 27-27 27 27 0 0 0-27-27zm0 13a14 14 0 0 1 14 14 14 14 0 0 1-14 14 14 14 0 0 1-14-14 14 14 0 0 1 14-14z"/>
+		</svg>
 		<div><input type="range" id="fan" min="0" max="1023" value="0" oninput="GB.n(this)"/></div>
 		<div id="afan">-%</div>
 	</div>
 	
 	<div class="dfrm dbg">
+		<div class="sys">
+			<a href="javascript:void(0)" onclick="GB.ff()" title="List" style="display:none">List</a>
+			<a href="javascript:void(0)" onclick="GB.lf()" title="Log">Log</a>
+			<div id="sys"></div>
+		</div>
 		<a href="javascript:void(0)" onclick="GB.r()" title="Update">
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250"><path d="M124 12A110 110 0 0 0 14 122a110 110 0 0 0 110 110 110 110 0 0 0 110-110A110 110 0 0 0 124 12zm0 46c17 0 34 7 46 19l11-8c2-2 5-1 5 2v51c0 2-1 3-4 2l-49-17c-2 0-2-2 0-4l14-10c-7-5-15-8-24-8-22 0-39 17-39 39s17 39 39 39a39 39 0 0 0 33-19s3-1 3 0l18 12c1 1 1 2 1 3a66 66 0 0 1-55 30c-36 0-66-30-66-66s30-66 66-65z"/></svg>
 		</a>
+
 	</div>
 	
 	<form action="/file" method="post" enctype="multipart/form-data" style="display:none;position:absolute;left:350px;width:200px">
